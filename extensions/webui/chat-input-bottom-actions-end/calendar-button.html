@@ -2125,7 +2125,7 @@
       },
 
       notifyCalendarIndicatorChanged(result) {
-        if (!result || result.has_calendar === undefined) return;
+        if (!result || (result.has_calendar === undefined && result.has_prompts === undefined && result.has_json === undefined)) return;
         try {
           Alpine.store("superordinates")?.fetchMap?.();
         } catch (_error) {

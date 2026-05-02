@@ -28,6 +28,15 @@ LEGACY_SUBSCRIPTIONS_FILENAME = "subscriptions.json"
 REGISTRY_VERSION = 1
 CALENDAR_INDICATOR_KEY = "has_calendar"
 CALENDAR_INDICATOR_ALT_KEY = "calendar_indicator"
+PROMPT_INDICATOR_KEY = "has_prompts"
+PROMPT_INDICATOR_ALT_KEY = "prompt_indicator"
+JSON_INDICATOR_KEY = "has_json"
+JSON_INDICATOR_ALT_KEY = "json_indicator"
+PROMPT_JSON_EXCLUDED_FILENAMES = {
+    CALDAV_REGISTRY_FILENAME,
+    LEGACY_SUBSCRIPTIONS_FILENAME,
+    ".a0-caldav-sync-state.json",
+}
 
 _CTXID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _BAD_FILENAME_CHARS_RE = re.compile(r"[^A-Za-z0-9_. -]+")
@@ -137,6 +146,36 @@ def local_ics_file_paths(ctxid: str) -> list[Path]:
         return []
 
 
+def local_a0_json_sidecar_paths(ctxid: str) -> list[Path]:
+    """Return local A0 prompt JSON sidecars for a context.
+
+    The calendar folder also contains scheduler/CalDAV metadata JSON such as
+    ``caldav.json`` and sync-state files.  Those files are not prompt
+    definitions, so only non-hidden ``*.json`` siblings that belong to an
+    existing ``*.ics`` file are counted as prompt sidecars.
+    """
+    clean = validate_context_id(ctxid)
+    calendar_dir = context_calendar_dir(clean, create=False)
+    if not calendar_dir.exists() or not calendar_dir.is_dir():
+        return []
+    try:
+        return [
+            path for path in sorted(calendar_dir.glob("*.json"), key=lambda p: p.name.lower())
+            if (
+                path.is_file()
+                and path.name not in PROMPT_JSON_EXCLUDED_FILENAMES
+                and not path.name.startswith(".")
+                and path.with_suffix(".ics").is_file()
+            )
+        ]
+    except OSError:
+        return []
+
+
+def derive_has_prompts(ctxid: str) -> bool:
+    """Derive whether the context has scheduler prompt JSON sidecars."""
+    return bool(local_a0_json_sidecar_paths(ctxid))
+
 def derive_has_calendar(ctxid: str) -> bool:
     """Derive the indicator from real sources, not from stale state.
 
@@ -155,9 +194,34 @@ def derive_has_calendar(ctxid: str) -> bool:
     return False
 
 
-def _set_calendar_indicator_on_context(clean_ctxid: str, has_calendar: bool) -> bool:
-    """Mirror the indicator into any loaded AgentContext data/output_data."""
+def _calendar_indicator_values(has_calendar: bool, has_prompts: bool) -> dict[str, bool]:
+    """Return all persisted indicator aliases for calendar and prompt state."""
+    calendar_value = bool(has_calendar)
+    prompt_value = bool(has_prompts)
+    return {
+        CALENDAR_INDICATOR_KEY: calendar_value,
+        CALENDAR_INDICATOR_ALT_KEY: calendar_value,
+        PROMPT_INDICATOR_KEY: prompt_value,
+        PROMPT_INDICATOR_ALT_KEY: prompt_value,
+        JSON_INDICATOR_KEY: prompt_value,
+        JSON_INDICATOR_ALT_KEY: prompt_value,
+    }
+
+
+def _set_indicator_values_on_mapping(mapping: dict[str, Any], values: dict[str, bool]) -> bool:
+    """Apply indicator values to one mutable metadata mapping."""
     changed = False
+    for key, value in values.items():
+        if mapping.get(key) is not value:
+            mapping[key] = value
+            changed = True
+    return changed
+
+
+def _set_calendar_indicator_on_context(clean_ctxid: str, has_calendar: bool, has_prompts: bool) -> bool:
+    """Mirror the indicators into any loaded AgentContext data/output_data."""
+    changed = False
+    values = _calendar_indicator_values(has_calendar, has_prompts)
     try:
         from agent import AgentContext
 
@@ -165,41 +229,48 @@ def _set_calendar_indicator_on_context(clean_ctxid: str, has_calendar: bool) -> 
         if ctx is not None:
             data = getattr(ctx, "data", None)
             if isinstance(data, dict):
-                if data.get(CALENDAR_INDICATOR_KEY) is not has_calendar:
-                    data[CALENDAR_INDICATOR_KEY] = has_calendar
-                    changed = True
-                if data.get(CALENDAR_INDICATOR_ALT_KEY) is not has_calendar:
-                    data[CALENDAR_INDICATOR_ALT_KEY] = has_calendar
-                    changed = True
+                changed = _set_indicator_values_on_mapping(data, values) or changed
             output_data = getattr(ctx, "output_data", None)
             if isinstance(output_data, dict):
-                if output_data.get(CALENDAR_INDICATOR_KEY) is not has_calendar:
-                    output_data[CALENDAR_INDICATOR_KEY] = has_calendar
-                    changed = True
-                if output_data.get(CALENDAR_INDICATOR_ALT_KEY) is not has_calendar:
-                    output_data[CALENDAR_INDICATOR_ALT_KEY] = has_calendar
-                    changed = True
+                changed = _set_indicator_values_on_mapping(output_data, values) or changed
     except Exception:
         pass
     return changed
 
 
-def persist_calendar_indicator(ctxid: str, has_calendar: bool | None = None) -> bool:
-    """Persist/reconcile the per-agent Calendar indicator.
+def persist_calendar_indicator(
+    ctxid: str,
+    has_calendar: bool | None = None,
+    *,
+    has_prompts: bool | None = None,
+    return_details: bool = False,
+) -> bool | dict[str, bool]:
+    """Persist/reconcile per-agent Scheduler sidebar indicators.
 
-    If has_calendar is omitted, derive it from actual local .ics files and Web
-    CalDAV accounts with an active collection.  The value is written to chat.json data/output_data and
-    mirrored into any loaded AgentContext so both persisted and in-memory UI
-    snapshots converge on the real source state.
+    By default this remains backward-compatible and returns only the Calendar
+    boolean.  Callers that need the richer indicator state can pass
+    ``return_details=True`` to receive ``has_calendar`` plus prompt/json
+    sidecar aliases.
 
-    To keep sidebar map polling cheap, chats with no calendar sources and no
+    If ``has_calendar`` is omitted, derive it from actual local .ics files and
+    Web CalDAV accounts with an active collection.  If ``has_prompts`` is
+    omitted, derive it from real local A0 prompt JSON sidecars, excluding
+    CalDAV/sync metadata JSON.
+
+    Values are written to chat.json data/output_data and mirrored into any
+    loaded AgentContext so persisted and in-memory UI snapshots converge on the
+    real source state.
+
+    To keep sidebar map polling cheap, chats with no Scheduler sources and no
     previous indicator metadata are left untouched.  Once a context has ever
-    advertised the indicator, false is persisted too so stale true values are
-    cleared after the last calendar source is removed.
+    advertised either indicator, false is persisted too so stale true values are
+    cleared after the last source/sidecar is removed.
     """
     clean = validate_context_id(ctxid)
-    derived = derive_has_calendar(clean) if has_calendar is None else bool(has_calendar)
-    _set_calendar_indicator_on_context(clean, derived)
+    derived_calendar = derive_has_calendar(clean) if has_calendar is None else bool(has_calendar)
+    derived_prompts = derive_has_prompts(clean) if has_prompts is None else bool(has_prompts)
+    indicator_values = _calendar_indicator_values(derived_calendar, derived_prompts)
+    _set_calendar_indicator_on_context(clean, derived_calendar, derived_prompts)
 
     path = chat_json_path(clean)
     if path.exists():
@@ -215,9 +286,9 @@ def persist_calendar_indicator(ctxid: str, has_calendar: bool | None = None) -> 
 
                 has_existing_metadata = any(
                     key in data or key in output_data
-                    for key in (CALENDAR_INDICATOR_KEY, CALENDAR_INDICATOR_ALT_KEY)
+                    for key in indicator_values
                 )
-                if derived or has_existing_metadata:
+                if derived_calendar or derived_prompts or has_existing_metadata:
                     changed = False
                     if chat.get("data") is not data:
                         chat["data"] = data
@@ -226,12 +297,7 @@ def persist_calendar_indicator(ctxid: str, has_calendar: bool | None = None) -> 
                         chat["output_data"] = output_data
                         changed = True
                     for mapping in (data, output_data):
-                        if mapping.get(CALENDAR_INDICATOR_KEY) is not derived:
-                            mapping[CALENDAR_INDICATOR_KEY] = derived
-                            changed = True
-                        if mapping.get(CALENDAR_INDICATOR_ALT_KEY) is not derived:
-                            mapping[CALENDAR_INDICATOR_ALT_KEY] = derived
-                            changed = True
+                        changed = _set_indicator_values_on_mapping(mapping, indicator_values) or changed
                     if changed:
                         with NamedTemporaryFile("w", encoding="utf-8", dir=str(path.parent), delete=False) as tmp:
                             json.dump(chat, tmp, indent=2)
@@ -242,7 +308,7 @@ def persist_calendar_indicator(ctxid: str, has_calendar: bool | None = None) -> 
             # Indicator persistence is useful UI metadata, but calendar CRUD
             # should not fail solely because chat.json is temporarily unreadable.
             pass
-    return derived
+    return dict(indicator_values) if return_details else derived_calendar
 
 
 def calendar_indicator_from_metadata(ctxid: str) -> bool:
@@ -797,7 +863,7 @@ def list_calendar_stack(ctxid: str) -> dict[str, Any]:
         caldav_sync_status = agent_calendar_sync.get_status(clean_ctxid)
     except Exception:
         caldav_sync_status = None
-    has_calendar = persist_calendar_indicator(clean_ctxid)
+    indicators = persist_calendar_indicator(clean_ctxid, return_details=True)
     return {
         "ok": True,
         "ctxid": clean_ctxid,
@@ -808,8 +874,7 @@ def list_calendar_stack(ctxid: str) -> dict[str, Any]:
         "caldav_accounts": caldav_accounts,
         "caldav_sync_status": caldav_sync_status,
         "sync_status": caldav_sync_status,
-        "has_calendar": has_calendar,
-        "calendar_indicator": has_calendar,
+        **indicators,
     }
 
 
@@ -821,10 +886,9 @@ def create_local_calendar(ctxid: str, filename: str, title: str | None = None, o
         raise ValueError(f"calendar file already exists: {safe_name}")
     calendar_name = title or Path(safe_name).stem.replace("_", " ").strip() or "Agent Calendar"
     path.write_text(build_empty_calendar(calendar_name), encoding="utf-8")
-    persist_calendar_indicator(ctxid)
+    indicators = persist_calendar_indicator(ctxid, has_calendar=True, return_details=True)
     info = file_info(path, calendar_dir)
-    info["has_calendar"] = True
-    info["calendar_indicator"] = True
+    info.update(indicators)
     return info
 
 
