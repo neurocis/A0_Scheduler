@@ -1,0 +1,8 @@
+name: a0_scheduler
+title: A0 Scheduler
+description: CalDAV-backed calendars, tasks, ICS files, sidecar metadata, and per-agent scheduling UI for Agent Zero.
+version: 1.0.0
+settings_sections:
+  - agent
+per_project_config: false
+per_agent_config: false

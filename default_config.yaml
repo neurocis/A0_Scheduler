@@ -1,0 +1,6 @@
+# A0 Scheduler default configuration
+# CalDAV account details are stored per chat context under:
+# /a0/usr/chats/<contextid>/calendar/caldav.json
+
+# Background job-loop sync cadence is controlled in the sync helper/extension.
+# The helper enforces normal 15-minute sync intervals and stale warnings after 1 hour.

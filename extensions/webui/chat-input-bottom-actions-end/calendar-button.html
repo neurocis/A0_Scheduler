@@ -1,0 +1,2883 @@
+<style>
+  .a0-agent-calendar-tab-anchor {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    --a0-calendar-panel-margin: clamp(0.5rem, 1.5vw, 1.25rem);
+    --a0-calendar-panel-width: min(1120px, calc(100vw - 2rem));
+    --a0-calendar-panel-max-height: min(930px, 90vh);
+    --a0-calendar-tab-offset-left: 0px;
+  }
+
+  .a0-agent-calendar-tab-anchor > .text-button {
+    position: relative;
+    z-index: 10002;
+  }
+
+  .a0-agent-calendar-tab-anchor > .text-button.a0-agent-calendar-toggle-open {
+    opacity: 1;
+    background-color: var(--color-background-hover);
+    border-radius: 0 0 4px 4px;
+  }
+
+  .a0-agent-calendar-host-lifted {
+    position: relative;
+    z-index: 10002;
+    overflow: visible !important;
+  }
+
+  .a0-agent-calendar-compose-lifted {
+    position: relative;
+    z-index: 10002;
+    transform: translateY(calc(-1 * var(--a0-calendar-panel-lift, 18rem)));
+    transition: transform 180ms ease;
+    will-change: transform;
+  }
+
+  .a0-agent-calendar-output-lifted {
+    transition: height 180ms ease, max-height 180ms ease, padding-bottom 180ms ease, margin-bottom 180ms ease;
+  }
+
+  .a0-agent-calendar-panel {
+    position: absolute;
+    top: auto;
+    left: calc(-1 * var(--a0-calendar-tab-offset-left, 0px));
+    right: auto;
+    bottom: calc(100% - 1px);
+    z-index: 10001;
+    width: var(--a0-calendar-panel-width, min(1120px, calc(100vw - 2rem)));
+    max-width: calc(100vw - 1rem);
+    height: var(--a0-calendar-panel-height, auto);
+    max-height: var(--a0-calendar-panel-max-height, min(930px, 90vh));
+    display: flex;
+    flex-direction: column;
+    container-type: inline-size;
+    overflow: hidden;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.14));
+    border-radius: 0.85rem 0.85rem 0 0;
+    background: var(--background-primary, #151515);
+    color: var(--text-primary, inherit);
+    box-shadow: 0 18px 65px rgba(0, 0, 0, 0.42);
+    transform-origin: bottom center;
+    will-change: transform, opacity;
+  }
+
+  .a0-agent-calendar-panel::before {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: var(--a0-calendar-tab-left, 0px);
+    width: var(--a0-calendar-tab-width, 7rem);
+    height: 1px;
+    background: var(--background-primary, #151515);
+  }
+  .a0-agent-calendar-body {
+    min-width: 0;
+    padding: 0.85rem 1rem 1rem;
+    overflow: auto;
+  }
+  .a0-agent-calendar-muted {
+    opacity: 0.72;
+    font-size: 0.86rem;
+  }
+
+  .a0-agent-calendar-content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+    min-width: 0;
+  }
+
+  .a0-agent-calendar-section {
+    min-width: 0;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    margin-top: 1rem;
+  }
+
+  .a0-agent-calendar-section-header {
+    margin: 0 0 0.6rem;
+  }
+
+  .a0-agent-calendar-heading-context {
+    font-weight: 400;
+    opacity: 0.78;
+  }
+
+  .a0-agent-calendar-files-list {
+    flex: 1 1 auto;
+  }
+
+  .a0-agent-calendar-section:first-child,
+  .a0-agent-calendar-content-grid > .a0-agent-calendar-section {
+    margin-top: 0;
+  }
+
+  .a0-agent-calendar-section h3 {
+    margin: 0 0 0.6rem;
+    font-size: 0.95rem;
+  }
+
+  .a0-agent-calendar-list {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .a0-agent-calendar-list.a0-agent-calendar-files-list {
+    grid-template-columns: repeat(auto-fit, minmax(min(10.5rem, 100%), 1fr));
+    align-items: start;
+  }
+
+  .a0-agent-calendar-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.45rem;
+    align-items: center;
+    padding: 0.55rem 0.6rem;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    border-radius: 0.55rem;
+    background: color-mix(in srgb, currentColor 4%, transparent);
+  }
+
+  .a0-agent-calendar-row-main {
+    min-width: 0;
+  }
+
+  .a0-agent-calendar-row-name {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .a0-agent-calendar-file-card {
+    position: relative;
+    display: block;
+    min-height: 5.35rem;
+    padding: 0.58rem 0.62rem 2.55rem;
+  }
+
+  .a0-agent-calendar-file-card .a0-agent-calendar-row-main {
+    padding-right: 0.1rem;
+  }
+
+  .a0-agent-calendar-file-headline {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.28rem;
+    min-width: 0;
+  }
+
+  .a0-agent-calendar-file-date-line {
+    display: flex;
+    align-items: center;
+    gap: 0.28rem;
+    min-width: 0;
+    line-height: 1.15;
+  }
+
+  .a0-agent-calendar-file-kind-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    font-size: 0.92rem;
+    line-height: 1;
+    opacity: 0.9;
+  }
+
+  .a0-agent-calendar-json-sidecar-icon {
+    color: #35d66b;
+    opacity: 1;
+    filter: drop-shadow(0 0 3px rgba(53, 214, 107, 0.28));
+  }
+
+  .a0-agent-calendar-file-date {
+    min-width: 0;
+    font-size: 0.78rem;
+    font-weight: 400;
+    opacity: 0.72;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .a0-agent-calendar-file-summary {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    font-weight: 700;
+    line-height: 1.16;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+    hyphens: none;
+  }
+
+  .a0-agent-calendar-file-json-preview {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    font-weight: 400;
+    line-height: 1.16;
+    font-size: 0.82rem;
+    opacity: 0.78;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+    hyphens: none;
+  }
+
+  .a0-agent-calendar-recurrence-icon {
+    flex: 0 0 auto;
+    opacity: 0.82;
+    font-size: 0.88rem;
+  }
+
+  .a0-agent-calendar-file-actions {
+    position: absolute;
+    right: 0.45rem;
+    bottom: 0.45rem;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+
+  .a0-agent-calendar-file-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    min-width: 1.8rem;
+    height: 1.8rem;
+    padding: 0 !important;
+    border-radius: 999px;
+    font-size: 0.98rem;
+    line-height: 1;
+  }
+
+  .a0-agent-calendar-file-add-button {
+    align-self: center;
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.05rem;
+    min-width: 2.05rem;
+    height: 2.05rem;
+    padding: 0 !important;
+    border-radius: 999px;
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .a0-agent-calendar-row-meta {
+    margin-top: 0.2rem;
+    opacity: 0.68;
+    font-size: 0.78rem;
+    overflow-wrap: anywhere;
+  }
+
+  .a0-agent-calendar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .a0-agent-calendar-input-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.75fr) minmax(180px, 1.25fr) auto;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+  }
+
+  .a0-agent-calendar-input-row input,
+  .a0-agent-calendar-editor input,
+  .a0-agent-calendar-editor textarea,
+  .a0-agent-calendar-editor select {
+    min-width: 0;
+    padding: 0.48rem 0.55rem;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.16));
+    border-radius: 0.42rem;
+    background: var(--background-secondary, rgba(255,255,255,0.04));
+    color: inherit;
+    font: inherit;
+  }
+
+  .a0-agent-calendar-editor-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1rem, 3vw, 2.25rem);
+    background: rgba(0, 0, 0, 0.58);
+    backdrop-filter: blur(2px);
+  }
+
+  .a0-agent-calendar-editor {
+    width: min(980px, calc(100vw - 2rem));
+    max-height: min(860px, calc(100vh - 2rem));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.16));
+    border-radius: 0.9rem;
+    background: var(--background-primary, #151515);
+    color: var(--text-primary, inherit);
+    box-shadow: 0 24px 90px rgba(0, 0, 0, 0.55);
+  }
+
+  .a0-agent-calendar-editor-toolbar {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.95rem 1rem;
+    border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.12));
+  }
+
+  .a0-agent-calendar-editor-title {
+    min-width: 0;
+    display: grid;
+    gap: 0.15rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .a0-agent-calendar-editor-subtitle {
+    opacity: 0.68;
+    font-size: 0.78rem;
+    font-weight: 400;
+  }
+
+  .a0-agent-calendar-editor-body {
+    padding: 0.95rem 1rem 1rem;
+    overflow: auto;
+  }
+
+  .a0-agent-calendar-editor-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    align-items: start;
+  }
+
+  .a0-agent-calendar-event-list {
+    max-height: 230px;
+    overflow: auto;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .a0-agent-calendar-event-row {
+    text-align: left;
+    width: 100%;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.12));
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.65rem;
+    background: color-mix(in srgb, currentColor 4%, transparent);
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .a0-agent-calendar-event-row:hover,
+  .a0-agent-calendar-event-row.a0-agent-calendar-event-row-active {
+    background: color-mix(in srgb, currentColor 11%, transparent);
+  }
+
+  .a0-agent-calendar-event-title {
+    font-weight: 650;
+    overflow-wrap: anywhere;
+  }
+
+  .a0-agent-calendar-event-meta {
+    margin-top: 0.18rem;
+    opacity: 0.68;
+    font-size: 0.78rem;
+  }
+
+  .a0-agent-calendar-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+
+  .a0-agent-calendar-event-fields-rest,
+  .a0-agent-calendar-todo-fields {
+    display: contents;
+  }
+
+  .a0-agent-calendar-form-field {
+    display: grid;
+    gap: 0.24rem;
+    font-size: 0.82rem;
+  }
+
+  .a0-agent-calendar-form-field-full {
+    grid-column: 1 / -1;
+  }
+
+  .a0-agent-calendar-form-field label {
+    opacity: 0.78;
+  }
+
+  .a0-agent-calendar-form-check {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.25rem;
+  }
+
+  .a0-agent-calendar-form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 0.45rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    margin-top: 0.15rem;
+  }
+
+  .a0-agent-calendar-editor-type {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.25rem 0 0.6rem 0;
+  }
+
+  .a0-agent-calendar-editor-type-label {
+    font-size: 0.78rem;
+    opacity: 0.75;
+  }
+
+  .a0-agent-calendar-caldav-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .a0-agent-calendar-caldav-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+  }
+
+  .a0-agent-calendar-caldav-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  .a0-agent-calendar-caldav-header-row .a0-agent-calendar-section-header {
+    margin-bottom: 0;
+  }
+
+  .a0-agent-calendar-caldav-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .a0-agent-calendar-caldav-status-ok {
+    color: #35d66b;
+  }
+
+  .a0-agent-calendar-caldav-status-error {
+    color: #ff5f57;
+  }
+
+  .a0-agent-calendar-caldav-status-empty {
+    color: rgba(255,255,255,0.94);
+  }
+
+  .a0-agent-calendar-caldav-web-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    flex: 1 1 min(22rem, 30%);
+    width: auto;
+    max-width: 30%;
+    min-width: min(22rem, 100%);
+  }
+
+  .a0-agent-calendar-caldav-form {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(240px, 2fr) minmax(120px, 0.75fr) minmax(140px, 0.8fr) auto !important;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .a0-agent-calendar-caldav-server-collection {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(120px, 0.85fr) auto;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .a0-agent-calendar-caldav-server-collection > input,
+  .a0-agent-calendar-caldav-collection-select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .a0-agent-calendar-caldav-collection-select {
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    outline: none;
+  }
+
+  .a0-agent-calendar-caldav-collection-select option {
+    color: #111;
+  }
+
+  .a0-agent-calendar-icon-button {
+    width: 2.15rem;
+    min-width: 2.15rem;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: center;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .a0-agent-calendar-svg-icon {
+    width: 1rem;
+    height: 1rem;
+    display: inline-block;
+    vertical-align: middle;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .a0-agent-calendar-small-button .a0-agent-calendar-svg-icon {
+    pointer-events: none;
+  }
+
+  .a0-agent-calendar-file-icon-button .material-symbols-outlined,
+  .a0-agent-calendar-small-button .material-symbols-outlined {
+    font-size: 1rem;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .a0-agent-calendar-content-grid .a0-agent-calendar-input-row {
+    grid-template-columns: minmax(100px, 0.8fr) minmax(160px, 1.2fr) auto;
+  }
+
+  .a0-agent-calendar-small-button {
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.16));
+    border-radius: 0.45rem;
+    background: color-mix(in srgb, currentColor 7%, transparent);
+    color: inherit;
+    cursor: pointer;
+  }
+  .a0-agent-calendar-small-button:hover {
+    background: color-mix(in srgb, currentColor 13%, transparent);
+  }
+
+
+  .a0-agent-calendar-editor-close {
+    width: 2.1rem;
+    min-width: 2.1rem;
+    height: 2.1rem;
+    padding: 0 !important;
+    border-radius: 999px;
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  .a0-agent-calendar-error {
+    margin: 0.75rem 0;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    background: rgba(210, 64, 64, 0.18);
+    color: #ffb7b7;
+  }
+
+  .a0-agent-calendar-slide-enter-active,
+  .a0-agent-calendar-slide-leave-active {
+    transition: transform 180ms ease, opacity 180ms ease;
+  }
+
+  .a0-agent-calendar-slide-enter-from,
+  .a0-agent-calendar-slide-leave-to {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+
+  .a0-agent-calendar-slide-enter-to,
+  .a0-agent-calendar-slide-leave-from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+
+  @container (max-width: 1040px) {
+    .a0-agent-calendar-caldav-form {
+      grid-template-columns: minmax(0, 1fr) minmax(120px, 0.75fr) minmax(140px, 0.8fr) !important;
+    }
+
+    .a0-agent-calendar-caldav-form > .a0-agent-calendar-small-button {
+      grid-column: 1 / -1;
+      justify-self: end;
+    }
+  }
+
+  @container (max-width: 860px) {
+    .a0-agent-calendar-content-grid,
+    .a0-agent-calendar-list.a0-agent-calendar-files-list,
+    .a0-agent-calendar-editor-grid,
+    .a0-agent-calendar-form-grid,
+    .a0-agent-calendar-caldav-form {
+      grid-template-columns: 1fr !important;
+    }
+
+    .a0-agent-calendar-caldav-header-row {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .a0-agent-calendar-caldav-web-row {
+      flex-basis: auto;
+      max-width: none;
+      min-width: 0;
+      width: 100%;
+    }
+  }
+
+  @container (max-width: 680px) {
+    .a0-agent-calendar-input-row {
+      grid-template-columns: 1fr;
+    }
+
+    .a0-agent-calendar-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 920px) {
+    .a0-agent-calendar-tab-anchor {
+      --a0-calendar-panel-margin: 0.5rem;
+    }
+  }
+
+  @media (max-width: 1480px) {
+    .a0-agent-calendar-list.a0-agent-calendar-files-list {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 1180px) {
+    .a0-agent-calendar-list.a0-agent-calendar-files-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 1040px) {
+    .a0-agent-calendar-caldav-form {
+      grid-template-columns: minmax(0, 1fr) minmax(120px, 0.75fr) minmax(140px, 0.8fr) !important;
+    }
+
+    .a0-agent-calendar-caldav-form > .a0-agent-calendar-small-button {
+      grid-column: 1 / -1;
+      justify-self: end;
+    }
+  }
+
+  @media (max-width: 860px) {
+    .a0-agent-calendar-content-grid,
+    .a0-agent-calendar-list.a0-agent-calendar-files-list,
+    .a0-agent-calendar-editor-grid,
+    .a0-agent-calendar-form-grid,
+    .a0-agent-calendar-caldav-form {
+      grid-template-columns: 1fr !important;
+    }
+
+    .a0-agent-calendar-caldav-header-row {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .a0-agent-calendar-caldav-web-row {
+      flex-basis: auto;
+      max-width: none;
+      min-width: 0;
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 680px) {
+    .a0-agent-calendar-input-row {
+      grid-template-columns: 1fr;
+    }
+
+    .a0-agent-calendar-row {
+      grid-template-columns: 1fr;
+    }
+
+    .a0-agent-calendar-editor-overlay {
+      align-items: stretch;
+      padding: 0.65rem;
+    }
+
+    .a0-agent-calendar-editor {
+      width: 100%;
+      max-height: calc(100vh - 1.3rem);
+    }
+  }
+</style>
+
+<span class="a0-agent-calendar-tab-anchor" x-data x-effect="$store.agentCalendar?.onContextChanged($store.chats?.selected || '')" @keydown.escape.window="$store.agentCalendar?.selectedFileName ? $store.agentCalendar.closeIcsFile() : $store.agentCalendar?.closeCalendar()">
+<button
+  type="button"
+  class="text-button"
+  :class="$store.agentCalendar?.visible ? 'a0-agent-calendar-toggle-open' : ''"
+  title="CalDAVnTasks"
+  @click.prevent.stop="$store.agentCalendar.toggleCalendar()"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+    <line x1="16" y1="2" x2="16" y2="6"></line>
+    <line x1="8" y1="2" x2="8" y2="6"></line>
+    <line x1="3" y1="10" x2="21" y2="10"></line>
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path>
+  </svg>
+  <p>CalDAVnTasks</p>
+</button>
+
+<div
+  x-cloak
+  x-show="$store.agentCalendar && $store.agentCalendar.visible"
+  x-transition:enter="a0-agent-calendar-slide-enter-active"
+  x-transition:enter-start="a0-agent-calendar-slide-enter-from"
+  x-transition:enter-end="a0-agent-calendar-slide-enter-to"
+  x-transition:leave="a0-agent-calendar-slide-leave-active"
+  x-transition:leave-start="a0-agent-calendar-slide-leave-from"
+  x-transition:leave-end="a0-agent-calendar-slide-leave-to"
+  class="a0-agent-calendar-panel"
+  role="dialog"
+  aria-label="Agent Calendar"
+  @click.stop
+>
+    <div class="a0-agent-calendar-body">
+      <template x-if="$store.agentCalendar.loading">
+        <div class="a0-agent-calendar-muted">Loading calendar stack…</div>
+      </template>
+
+      <template x-if="$store.agentCalendar.error">
+        <div class="a0-agent-calendar-error" x-text="$store.agentCalendar.error"></div>
+      </template>
+
+      <template x-if="!$store.agentCalendar.loading">
+        <div class="a0-agent-calendar-content-grid">
+          <div class="a0-agent-calendar-section">
+            <template x-if="$store.agentCalendar.files.length === 0">
+              <div class="a0-agent-calendar-muted a0-agent-calendar-files-list">No local .ics files yet.</div>
+            </template>
+
+            <div class="a0-agent-calendar-list a0-agent-calendar-files-list">
+              <template x-for="file in $store.agentCalendar.sortedIcsFiles()" :key="file.relative_path">
+                <div class="a0-agent-calendar-row a0-agent-calendar-file-card" :title="$store.agentCalendar.fileTooltip(file)">
+                  <div class="a0-agent-calendar-row-main">
+                    <div class="a0-agent-calendar-file-headline">
+                      <div class="a0-agent-calendar-file-date-line">
+                        <template x-if="$store.agentCalendar.fileHasJsonSidecar(file) && !['event', 'todo'].includes($store.agentCalendar.fileComponentKind(file))">
+                          <svg class="a0-agent-calendar-svg-icon a0-agent-calendar-file-kind-icon a0-agent-calendar-json-sidecar-icon" viewBox="0 0 24 24" role="img" aria-label="Has JSON sidecar">
+                            <rect x="3" y="4" width="18" height="17" rx="2" ry="2"></rect>
+                            <path d="M16 2v4"></path>
+                            <path d="M8 2v4"></path>
+                            <path d="M3 10h18"></path>
+                            <path d="M8 15l2.5 2.5L16 12"></path>
+                          </svg>
+                        </template>
+                        <span class="a0-agent-calendar-file-kind-icon a0-agent-calendar-json-sidecar-icon" x-show="$store.agentCalendar.fileHasJsonSidecar(file) && $store.agentCalendar.fileComponentKind(file) === 'event'" aria-label="Event has JSON sidecar" role="img">📅</span>
+                        <span class="a0-agent-calendar-file-kind-icon a0-agent-calendar-json-sidecar-icon" x-show="$store.agentCalendar.fileHasJsonSidecar(file) && $store.agentCalendar.fileComponentKind(file) === 'todo'" aria-label="Todo has JSON sidecar" role="img">✅</span>
+                        <span class="a0-agent-calendar-file-kind-icon" x-show="!$store.agentCalendar.fileHasJsonSidecar(file) && $store.agentCalendar.fileComponentKind(file) === 'event'" aria-hidden="true">🗓️</span>
+                        <span class="a0-agent-calendar-file-kind-icon" x-show="!$store.agentCalendar.fileHasJsonSidecar(file) && $store.agentCalendar.fileComponentKind(file) === 'todo'" aria-hidden="true">☑️</span>
+                        <span class="a0-agent-calendar-file-date" x-text="$store.agentCalendar.fileStartLabel(file)"></span>
+                        <template x-if="file.is_recurring">
+                          <svg class="a0-agent-calendar-svg-icon a0-agent-calendar-recurrence-icon" viewBox="0 0 24 24" role="img" aria-label="Recurrent">
+                            <path d="M17 1l4 4-4 4"></path>
+                            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                            <path d="M7 23l-4-4 4-4"></path>
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                          </svg>
+                        </template>
+                      </div>
+                      <span class="a0-agent-calendar-file-summary" x-text="$store.agentCalendar.fileSummaryDisplay(file)"></span>
+                      <span class="a0-agent-calendar-file-json-preview" x-show="$store.agentCalendar.fileJsonPromptText(file)" x-text="$store.agentCalendar.fileJsonPromptDisplay(file)"></span>
+                    </div>
+                  </div>
+                  <div class="a0-agent-calendar-actions a0-agent-calendar-file-actions">
+                    <button type="button"
+                            class="a0-agent-calendar-small-button a0-agent-calendar-file-icon-button"
+                            title="Edit"
+                            aria-label="Edit"
+                            @click="$store.agentCalendar.openIcsFile(file)">
+                      <svg class="a0-agent-calendar-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+                      </svg>
+                    </button>
+                    <button type="button"
+                            class="a0-agent-calendar-small-button a0-agent-calendar-file-icon-button"
+                            title="Delete"
+                            aria-label="Delete"
+                            @click.stop="$confirmClick($event, () => $store.agentCalendar.deleteLocalCalendar(file))">
+                      <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <button type="button"
+                      class="a0-agent-calendar-small-button a0-agent-calendar-file-add-button"
+                      title="New ICS"
+                      aria-label="New ICS"
+                      @click="$store.agentCalendar.createLocalCalendar()">
+                <svg class="a0-agent-calendar-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 5v14"></path>
+                  <path d="M5 12h14"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="a0-agent-calendar-section">
+            <div class="a0-agent-calendar-caldav-header-row">
+              <div class="a0-agent-calendar-caldav-title-wrap">
+                <div class="a0-agent-calendar-caldav-title">
+                  <span class="a0-agent-calendar-caldav-status"
+                        :class="$store.agentCalendar.caldavStatusClass()"
+                        :title="$store.agentCalendar.caldavStatusTitle()"
+                        x-text="$store.agentCalendar.caldavStatusGlyph()"></span>
+                  <h3 class="a0-agent-calendar-section-header">CalDAV Account</h3>
+                </div>
+                <div class="a0-agent-calendar-actions" style="justify-content:flex-end; align-items:center; gap:0.45rem;">
+                  <span class="a0-agent-calendar-row-meta" style="white-space: nowrap; opacity: 0.92;"
+                        x-show="$store.agentCalendar.caldavSyncStatusText()"
+                        x-text="$store.agentCalendar.caldavSyncStatusText()"></span>
+                  <button type="button"
+                          class="a0-agent-calendar-small-button a0-agent-calendar-icon-button"
+                          :disabled="$store.agentCalendar.loading || !$store.agentCalendar.caldavAccount || !$store.agentCalendar.caldavAccount.selected_collection_url"
+                          title="Sync"
+                          aria-label="Sync"
+                          @click="$store.agentCalendar.syncCaldavIcsFiles()">
+                    <svg class="a0-agent-calendar-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"></path>
+                      <path d="M4 4v4h4"></path>
+                      <path d="M4 13a8 8 0 0 0 14.5 4.5L20 16"></path>
+                      <path d="M20 20v-4h-4"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="a0-agent-calendar-caldav-web-row">
+                <button type="button"
+                        class="a0-agent-calendar-small-button"
+                        :disabled="!$store.agentCalendar.safeHttpUrl($store.agentCalendar.newCaldav.webui_calendar_url)"
+                        title="Open the configured WebUI calendar URL"
+                        @click="$store.agentCalendar.openConfiguredWebCalendar()">
+                  Open My Calendar
+                </button>
+                <input type="url" placeholder="WebUI Calendar URL (optional)" x-model="$store.agentCalendar.newCaldav.webui_calendar_url">
+              </div>
+            </div>
+            <div class="a0-agent-calendar-input-row a0-agent-calendar-caldav-form">
+              <div class="a0-agent-calendar-caldav-server-collection">
+                <input type="url" placeholder="CalDAV server URL, e.g. https://caldav.example.com" x-model="$store.agentCalendar.newCaldav.server_url">
+                <select class="a0-agent-calendar-caldav-collection-select"
+                        x-model="$store.agentCalendar.selectedCaldavCollectionUrl"
+                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.caldavAccount"
+                        title="Selected CalDAV collection for sync"
+                        @pointerdown="$store.agentCalendar.refreshCaldavCollectionsForDropdown()"
+                        @focus="$store.agentCalendar.refreshCaldavCollectionsForDropdown()"
+                        @change="$store.agentCalendar.selectCaldavCollection($event.target.value)">
+                  <option value="" disabled>Collection…</option>
+                  <template x-for="collection in $store.agentCalendar.caldavCollections()" :key="collection.url || collection.name || collection.display_name">
+                    <option :value="collection.url" x-text="$store.agentCalendar.caldavCollectionLabel(collection)"></option>
+                  </template>
+                </select>
+                <button type="button"
+                        class="a0-agent-calendar-small-button a0-agent-calendar-icon-button"
+                        :disabled="$store.agentCalendar.loading || $store.agentCalendar.collectionRefreshInflight || !$store.agentCalendar.caldavAccount"
+                        title="Refresh CalDAV collections"
+                        aria-label="Refresh CalDAV collections"
+                        @click="$store.agentCalendar.refreshCaldavCollections()">
+                  ↻
+                </button>
+              </div>
+              <input type="text" placeholder="Username" autocomplete="username" x-model="$store.agentCalendar.newCaldav.username">
+              <input type="password" placeholder="Password / App password" autocomplete="new-password" x-model="$store.agentCalendar.newCaldav.password" @keydown.enter="$store.agentCalendar.addCaldavAccount()">
+              <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.addCaldavAccount()">
+                Save CalDAV account
+              </button>
+            </div>
+            <div class="a0-agent-calendar-row-meta" x-show="$store.agentCalendar.lastSyncSummary" x-text="$store.agentCalendar.lastSyncSummary"></div>
+          </div>
+
+        </div>
+      </template>
+    </div>
+
+    <template x-teleport="body">
+      <div x-cloak
+           x-show="$store.agentCalendar && $store.agentCalendar.selectedFileName"
+           class="a0-agent-calendar-editor-overlay"
+           role="presentation"
+           @click.self="$store.agentCalendar.closeIcsFile()">
+        <div class="a0-agent-calendar-editor"
+             role="dialog"
+             aria-modal="true"
+             aria-label="Calendar item editor"
+             @click.stop>
+          <div class="a0-agent-calendar-editor-toolbar">
+            <div class="a0-agent-calendar-editor-title">
+              <span x-text="$store.agentCalendar.editorTitle()"></span>
+              <span class="a0-agent-calendar-editor-subtitle" x-text="$store.agentCalendar.editorSubtitle()"></span>
+            </div>
+            <div class="a0-agent-calendar-actions">
+              <button type="button"
+                      class="a0-agent-calendar-small-button a0-agent-calendar-editor-close"
+                      title="Close editor"
+                      aria-label="Close editor"
+                      @click="$store.agentCalendar.closeIcsFile()">×</button>
+            </div>
+          </div>
+
+          <div class="a0-agent-calendar-editor-body">
+            <div class="a0-agent-calendar-editor-type">
+              <label class="a0-agent-calendar-editor-type-label" for="a0-agent-calendar-component-kind">Type</label>
+              <select id="a0-agent-calendar-component-kind"
+                      x-model="$store.agentCalendar.componentKind"
+                      @change="$store.agentCalendar.switchComponentKind()">
+                <option value="event">Event (VEVENT)</option>
+                <option value="todo">Todo (VTODO)</option>
+              </select>
+            </div>
+
+            <div class="a0-agent-calendar-editor-grid a0-agent-calendar-editor-grid-single">
+              <div>
+                <div class="a0-agent-calendar-form-grid">
+                  <template x-if="$store.agentCalendar.componentKind === 'event'">
+                    <div class="a0-agent-calendar-form-field a0-agent-calendar-form-field-full">
+                      <label>Summary</label>
+                      <input type="text" x-model="$store.agentCalendar.eventForm.summary" placeholder="Event title">
+                    </div>
+                  </template>
+                  <template x-if="$store.agentCalendar.componentKind === 'event'">
+                    <div class="a0-agent-calendar-event-fields-rest">
+                  <div class="a0-agent-calendar-form-field">
+                    <label>Start date</label>
+                    <input type="date" x-model="$store.agentCalendar.eventForm.start_date">
+                  </div>
+                  <div class="a0-agent-calendar-form-field">
+                    <label>Start time</label>
+                    <input type="time" x-model="$store.agentCalendar.eventForm.start_time" :disabled="$store.agentCalendar.eventForm.all_day">
+                  </div>
+                  <div class="a0-agent-calendar-form-field">
+                    <label>End date</label>
+                    <input type="date" x-model="$store.agentCalendar.eventForm.end_date">
+                  </div>
+                  <div class="a0-agent-calendar-form-field">
+                    <label>End time</label>
+                    <input type="time" x-model="$store.agentCalendar.eventForm.end_time" :disabled="$store.agentCalendar.eventForm.all_day">
+                  </div>
+                  <label class="a0-agent-calendar-form-check">
+                    <input type="checkbox" x-model="$store.agentCalendar.eventForm.all_day">
+                    <span>All day</span>
+                  </label>
+                  <div class="a0-agent-calendar-form-field">
+                    <label>Repeat</label>
+                    <select x-model="$store.agentCalendar.eventForm.recurrence_frequency" @change="$store.agentCalendar.syncRecurrenceRule()">
+                      <option value="none">Does not repeat</option>
+                      <option value="minutely">Every N minutes</option>
+                      <option value="hourly">Hourly</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                      <option value="custom">Custom RRULE</option>
+                    </select>
+                  </div>
+                  <div class="a0-agent-calendar-form-field" x-show="$store.agentCalendar.eventForm.recurrence_frequency !== 'none'">
+                    <label>Interval</label>
+                    <input type="number" min="1" step="1" x-model="$store.agentCalendar.eventForm.recurrence_interval" @input="$store.agentCalendar.syncRecurrenceRule()" placeholder="1">
+                  </div>
+                  <div class="a0-agent-calendar-form-field" x-show="$store.agentCalendar.eventForm.recurrence_frequency !== 'none' && $store.agentCalendar.eventForm.recurrence_frequency !== 'custom'">
+                    <label>Count</label>
+                    <input type="number" min="1" step="1" x-model="$store.agentCalendar.eventForm.recurrence_count" @input="$store.agentCalendar.syncRecurrenceRule()" placeholder="Optional">
+                  </div>
+                  <div class="a0-agent-calendar-form-field" x-show="$store.agentCalendar.eventForm.recurrence_frequency !== 'none' && $store.agentCalendar.eventForm.recurrence_frequency !== 'custom'">
+                    <label>Until</label>
+                    <input type="date" x-model="$store.agentCalendar.eventForm.recurrence_until" @input="$store.agentCalendar.syncRecurrenceRule()" :disabled="Boolean($store.agentCalendar.eventForm.recurrence_count)">
+                  </div>
+                  <div class="a0-agent-calendar-form-field a0-agent-calendar-form-field-full" x-show="$store.agentCalendar.eventForm.recurrence_frequency === 'custom'">
+                    <label>Custom RRULE</label>
+                    <input type="text" x-model="$store.agentCalendar.eventForm.rrule" placeholder="FREQ=WEEKLY;INTERVAL=2;COUNT=10">
+                  </div>
+                  <div class="a0-agent-calendar-form-field a0-agent-calendar-form-field-full" x-show="$store.agentCalendar.eventForm.recurrence_frequency !== 'none'">
+                    <label>RDATE / EXDATE</label>
+                    <textarea rows="2" x-model="$store.agentCalendar.eventForm.rdate" placeholder="Optional extra dates, one RDATE line or value per line"></textarea>
+                    <textarea rows="2" x-model="$store.agentCalendar.eventForm.exdate" placeholder="Optional exception dates, one EXDATE line or value per line"></textarea>
+                  </div>
+                  <div class="a0-agent-calendar-form-field">
+                    <label>Location</label>
+                    <input type="text" x-model="$store.agentCalendar.eventForm.location" placeholder="Optional">
+                  </div>
+                  <div class="a0-agent-calendar-form-field a0-agent-calendar-form-field-full">
+                    <label>Description</label>
+                    <textarea rows="3" x-model="$store.agentCalendar.eventForm.description" placeholder="Optional details"></textarea>
+                  </div>
+                    </div>
+                  </template>
+                  <template x-if="$store.agentCalendar.componentKind === 'todo'">
+                    <div class="a0-agent-calendar-todo-fields">
+                      <div class="a0-agent-calendar-form-field a0-agent-calendar-form-field-full">
+                        <label>Summary</label>
+                        <input type="text" x-model="$store.agentCalendar.todoForm.summary" placeholder="Todo title">
+                      </div>
+                      <div class="a0-agent-calendar-form-field">
+                        <label>Status</label>
+                        <select x-model="$store.agentCalendar.todoForm.status">
+                          <option value="">(none)</option>
+                          <option value="NEEDS-ACTION">Needs action</option>
+                          <option value="IN-PROCESS">In process</option>
+                          <option value="COMPLETED">Completed</option>
+                          <option value="CANCELLED">Cancelled</option>
+                        </select>
+                      </div>
+                      <div class="a0-agent-calendar-form-field">
+                        <label>Priority (0-9)</label>
+                        <input type="number" min="0" max="9" step="1" x-model="$store.agentCalendar.todoForm.priority" placeholder="Optional">
+                      </div>
+                      <div class="a0-agent-calendar-form-field">
+                        <label>% Complete</label>
+                        <input type="number" min="0" max="100" step="1" x-model="$store.agentCalendar.todoForm.percent_complete" placeholder="Optional">
+                      </div>
+                      <div class="a0-agent-calendar-form-field">
+                        <label>Start date</label>
+                        <input type="date" x-model="$store.agentCalendar.todoForm.start_date">
+                      </div>
+                      <div class="a0-agent-calendar-form-field">
+                        <label>Start time</label>
+                        <input type="time" x-model="$store.agentCalendar.todoForm.start_time" :disabled="$store.agentCalendar.todoForm.all_day">
+                      </div>
+                      <div class="a0-agent-calendar-form-field">
+                        <label>Due date</label>
+                        <input type="date" x-model="$store.agentCalendar.todoForm.due_date">
+                      </div>
+                      <div class="a0-agent-calendar-form-field">
+                        <label>Due time</label>
+                        <input type="time" x-model="$store.agentCalendar.todoForm.due_time" :disabled="$store.agentCalendar.todoForm.all_day">
+                      </div>
+                      <label class="a0-agent-calendar-form-check">
+                        <input type="checkbox" x-model="$store.agentCalendar.todoForm.all_day">
+                        <span>All day</span>
+                      </label>
+                      <div class="a0-agent-calendar-form-field">
+                        <label>Location</label>
+                        <input type="text" x-model="$store.agentCalendar.todoForm.location" placeholder="Optional">
+                      </div>
+                      <div class="a0-agent-calendar-form-field a0-agent-calendar-form-field-full">
+                        <label>Description</label>
+                        <textarea rows="3" x-model="$store.agentCalendar.todoForm.description" placeholder="Optional details"></textarea>
+                      </div>
+                    </div>
+                  </template>
+                  <div class="a0-agent-calendar-form-actions">
+                    <template x-if="$store.agentCalendar.componentKind === 'event'">
+                      <span>
+                        <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.saveCurrentItem()" x-text="$store.agentCalendar.selectedSource === 'caldav' ? 'Save CalDAV event' : 'Save event'"></button>
+                        <button type="button" class="a0-agent-calendar-small-button" x-show="$store.agentCalendar.eventForm.uid" @click="$confirmClick($event, () => $store.agentCalendar.deleteCurrentItem())" x-text="$store.agentCalendar.selectedSource === 'caldav' ? 'Delete CalDAV event' : 'Clear event'"></button>
+                      </span>
+                    </template>
+                    <template x-if="$store.agentCalendar.componentKind === 'todo'">
+                      <span>
+                        <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.saveCurrentItem()" x-text="$store.agentCalendar.selectedSource === 'caldav' ? 'Save CalDAV todo' : 'Save todo'"></button>
+                        <button type="button" class="a0-agent-calendar-small-button" x-show="$store.agentCalendar.todoForm.uid" @click="$confirmClick($event, () => $store.agentCalendar.deleteCurrentItem())" x-text="$store.agentCalendar.selectedSource === 'caldav' ? 'Delete CalDAV todo' : 'Clear todo'"></button>
+                      </span>
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+</div>
+</span>
+
+<script type="module">
+  import { callJsonApi } from "/js/api.js";
+
+  function selectedContextId() {
+    try {
+      const chats = window.Alpine?.store?.("chats");
+      if (chats?.getSelectedChatId) return chats.getSelectedChatId() || "";
+      if (chats?.selectedChatId) return chats.selectedChatId || "";
+      if (chats?.selected) return chats.selected || "";
+    } catch (_e) {}
+    return "";
+  }
+
+  function selectedContextDisplayName() {
+    try {
+      const chats = window.Alpine?.store?.("chats");
+      const selectedId = selectedContextId();
+      const candidates = [];
+
+      if (chats?.getSelectedChat) candidates.push(chats.getSelectedChat());
+      if (chats?.selectedChat) candidates.push(chats.selectedChat);
+      if (chats?.currentChat) candidates.push(chats.currentChat);
+      if (chats?.activeChat) candidates.push(chats.activeChat);
+
+      const collections = [chats?.chats, chats?.items, chats?.list, chats?.contexts];
+      for (const collection of collections) {
+        if (Array.isArray(collection)) {
+          candidates.push(collection.find((chat) => {
+            const id = chat?.id || chat?.ctxid || chat?.context_id || chat?.contextId;
+            return selectedId && id === selectedId;
+          }));
+        } else if (collection && typeof collection === "object") {
+          candidates.push(collection[selectedId]);
+        }
+      }
+
+      for (const chat of candidates) {
+        if (!chat || typeof chat !== "object") continue;
+        for (const key of ["static_name", "staticName", "name", "title", "agent_name", "agentName", "label"]) {
+          const value = chat[key];
+          if (typeof value === "string" && value.trim() && value.trim() !== selectedId) return value.trim();
+        }
+      }
+    } catch (_e) {}
+    return "";
+  }
+
+  function safeHttpUrl(value) {
+    const url = String(value || "").trim();
+    return /^https?:\/\//i.test(url) ? url : "";
+  }
+
+  function caldavWebUrl(account) {
+    return String(account?.webui_calendar_url ?? account?.webuiCalendarUrl ?? "");
+  }
+
+  async function waitForAlpineStore(name, timeoutMs = 3000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() <= deadline) {
+      const store = window.Alpine?.store?.(name);
+      if (store) return store;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return window.Alpine?.store?.(name) || null;
+  }
+
+  async function openUrlInAgentBrowser(url) {
+    const cleanUrl = safeHttpUrl(url);
+    if (!cleanUrl) throw new Error("Configure a valid WebUI Calendar URL first.");
+
+    const rightCanvas = window.Alpine?.store?.("rightCanvas") || null;
+    if (!rightCanvas?.open) {
+      throw new Error("Built-in canvas browser is unavailable.");
+    }
+
+    const contextId = selectedContextId();
+    const opened = await rightCanvas.open("browser", {
+      contextId,
+      context_id: contextId,
+      source: "agent-calendar",
+    });
+    if (!opened) throw new Error("Built-in canvas browser is unavailable.");
+
+    const browserPage = await waitForAlpineStore("browserPage");
+    if (!browserPage?.command) {
+      throw new Error("Built-in browser page store is unavailable.");
+    }
+
+    await browserPage.command("open", {
+      url: cleanUrl,
+      context_id: contextId,
+    });
+    return { ok: true, mechanism: "rightCanvas.browserPage" };
+  }
+
+  function registerAgentCalendarStore() {
+    if (!window.Alpine) return;
+    try {
+      if (window.Alpine.store("agentCalendar")) return;
+    } catch (_e) {}
+
+    window.Alpine.store("agentCalendar", {
+      visible: false,
+      loading: false,
+      collectionRefreshInflight: false,
+      error: "",
+      lastSyncSummary: "",
+      caldavSyncStatus: null,
+      ctxid: "",
+      agentName: "",
+      calendarDir: "",
+      files: [],
+      caldavAccount: null,
+      caldavAccounts: [],
+      caldavEvents: [],
+      selectedCaldavAccountId: "",
+      selectedCaldavCollectionLabel: "",
+      selectedCaldavCollectionUrl: "",
+      selectedCaldavHref: "",
+      selectedSource: "local",
+      selectedFileName: "",
+      pendingLocalCalendar: false,
+      selectedFile: null,
+      selectedEvents: [],
+      eventForm: {},
+      todoForm: {},
+      componentKind: "event",
+      originalEventUid: "",
+      originalTodoUid: "",
+      newCaldav: { server_url: "", webui_calendar_url: "", username: "", password: "" },
+      editingCaldavAccount: false,
+      calendarTabWidth: "7rem",
+      calendarHostEl: null,
+      calendarOutputEl: null,
+      calendarLiftEls: [],
+      placementCleanupTimer: null,
+      calendarResizeHandler: null,
+      calendarResizeRaf: 0,
+      _ctxRefreshInflight: "",
+      _ctxLastSeen: null,
+
+      fileSummary(file) {
+        return String(file?.summary || file?.event_summary || file?.todo_summary || "(empty)");
+      },
+
+      fileComponentKind(file) {
+        const kind = String(file?.component_kind || file?.kind || file?.type || "").trim().toLowerCase();
+        if (kind === "todo" || kind === "vtodo" || kind.includes("todo")) return "todo";
+        return "event";
+      },
+
+      fileHasJsonSidecar(file) {
+        return Boolean(file?.has_json_sidecar || file?.has_json);
+      },
+
+      fileJsonPromptText(file) {
+        if (!this.fileHasJsonSidecar(file)) return "";
+        return String(
+          file?.a0_prompt_start
+          || file?.json_prompt_start
+          || file?.a0_prompt_start_preview
+          || file?.json_prompt_start_preview
+          || ""
+        );
+      },
+
+      fileJsonPromptDisplay(file) {
+        return this.truncateLongTokens(this.fileJsonPromptText(file));
+      },
+
+      fileJsonPromptPreview(file) {
+        return this.fileJsonPromptDisplay(file);
+      },
+
+      truncateLongTokens(value, maxTokenChars = 32) {
+        const parsedLimit = Number.parseInt(maxTokenChars, 10);
+        const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 32;
+        return String(value || "").replace(/\S+/gu, (token) => {
+          const chars = Array.from(token);
+          if (chars.length <= limit) return token;
+          return `${chars.slice(0, limit).join("")}...`;
+        });
+      },
+
+      fileSummaryDisplay(file) {
+        return this.truncateLongTokens(this.fileSummary(file));
+      },
+
+      fileTooltip(file) {
+        const name = String(file?.name || file?.relative_path || "").trim();
+        return name || this.fileSummary(file);
+      },
+
+      normalizeFileDateLabel(dateValue, timeValue, allDay = false) {
+        const date = String(dateValue || "").trim();
+        if (!date) return "";
+        const time = allDay ? "" : String(timeValue || "").trim();
+        return time ? `${date} ${time}` : date;
+      },
+
+      fileStartLabel(file) {
+        const explicit = String(file?.display_start_label || file?.start_label || "").trim();
+        if (explicit && explicit !== "No date") return explicit;
+        const fallback = this.normalizeFileDateLabel(
+          file?.display_start_date || file?.start_date || file?.due_date,
+          file?.display_start_time || file?.start_time || file?.due_time,
+          Boolean(file?.all_day)
+        );
+        return fallback || "No date";
+      },
+
+      fileSortKey(file) {
+        const explicit = String(file?.sort_start || file?.display_start || "").trim();
+        if (explicit && explicit !== "9999-12-31T23:59:59") return explicit;
+        const date = String(file?.display_start_date || file?.start_date || file?.due_date || "9999-12-31").trim();
+        const time = String(file?.display_start_time || file?.start_time || file?.due_time || "23:59").trim() || "23:59";
+        return `${date}T${time}`;
+      },
+
+      sortedIcsFiles() {
+        return [...(this.files || [])].sort((a, b) => {
+          const ak = this.fileSortKey(a);
+          const bk = this.fileSortKey(b);
+          if (ak !== bk) return ak.localeCompare(bk);
+          return this.fileSummary(a).localeCompare(this.fileSummary(b)) || String(a?.name || "").localeCompare(String(b?.name || ""));
+        });
+      },
+
+      mergeLocalFileIntoList(file) {
+        if (!file || !(file.name || file.relative_path)) return;
+        const key = String(file.relative_path || file.name || "");
+        const existing = Array.isArray(this.files) ? this.files : [];
+        const index = existing.findIndex((item) => String(item?.relative_path || item?.name || "") === key);
+        if (index >= 0) {
+          this.files = existing.map((item, idx) => idx === index ? { ...item, ...file } : item);
+        } else {
+          this.files = [...existing, file];
+        }
+      },
+
+      calendarAnchor() {
+        return document.querySelector(".a0-agent-calendar-tab-anchor");
+      },
+
+      calendarButton() {
+        return document.querySelector(".a0-agent-calendar-tab-anchor > .text-button");
+      },
+
+      calendarActionHost() {
+        const anchor = this.calendarAnchor();
+        if (!anchor) return null;
+
+        // Calendar lives in the bottom action row. Keep that row anchored at the
+        // bottom and use it only as the tab/panel anchor; do not lift it.
+        return anchor.closest?.(".chat-bottom-actions-bar") ||
+          anchor.closest?.(".text-buttons-row") ||
+          anchor.parentElement ||
+          anchor;
+      },
+
+      calendarComposerReferenceEl(host) {
+        try {
+          const input = document.getElementById("chat-input");
+          const row = input?.closest?.(".input-row");
+          if (row && !(host && (row === host || host.contains(row)))) return row;
+
+          const container = input?.closest?.("#chat-input-container");
+          if (container && !(host && (container === host || host.contains(container)))) return container;
+          return input || null;
+        } catch (_e) {
+          return null;
+        }
+      },
+
+      calendarComposerLiftTargets(host) {
+        const targets = [];
+        const add = (el) => {
+          if (!el || targets.includes(el)) return;
+          if (host && (el === host || host.contains(el))) return;
+          if (el.closest?.(".chat-bottom-actions-bar") || el.classList?.contains("chat-bottom-actions-bar")) return;
+
+          // Never transform both a node and a related ancestor/descendant.
+          for (const existing of targets) {
+            if (existing && existing.contains?.(el)) return;
+          }
+          for (let i = targets.length - 1; i >= 0; i -= 1) {
+            const existing = targets[i];
+            if (el.contains?.(existing)) targets.splice(i, 1);
+          }
+
+          targets.push(el);
+        };
+
+        try {
+          const reference = this.calendarComposerReferenceEl(host);
+          const progressBox = document.getElementById("progress-bar-box");
+
+          // Keep this intentionally deterministic. Earlier versions also
+          // scanned arbitrary #input-section children for attachment/queue
+          // wrappers, but in real layouts that can select a second wrapper for
+          // the same prompt area and make the prompt appear double-lifted.
+          if (
+            progressBox &&
+            !(reference && (
+              progressBox === reference ||
+              progressBox.contains?.(reference) ||
+              reference.contains?.(progressBox)
+            ))
+          ) {
+            add(progressBox);
+          }
+          add(reference);
+        } catch (_e) {}
+
+        return targets;
+      },
+
+      liftComposerElements(host, lift) {
+        try {
+          const targets = this.calendarComposerLiftTargets(host);
+          for (const previous of this.calendarLiftEls || []) {
+            if (!targets.includes(previous)) {
+              previous.classList.remove("a0-agent-calendar-compose-lifted");
+              previous.style.removeProperty("--a0-calendar-panel-lift");
+            }
+          }
+
+          this.calendarLiftEls = targets;
+          for (const el of targets) {
+            el.style.setProperty("--a0-calendar-panel-lift", `${lift}px`);
+            el.classList.add("a0-agent-calendar-compose-lifted");
+          }
+        } catch (_e) {}
+      },
+
+      clearComposerLift() {
+        try {
+          for (const el of this.calendarLiftEls || []) {
+            el.classList.remove("a0-agent-calendar-compose-lifted");
+            el.style.removeProperty("--a0-calendar-panel-lift");
+          }
+          this.calendarLiftEls = [];
+        } catch (_e) {}
+      },
+
+      calendarOutputHost(host) {
+        try {
+          // The WebUI's actual monologue/message viewport is #chat-history.
+          // Prefer it explicitly so we do not accidentally pad a generic wrapper
+          // while the real scroll pane remains hidden behind the model/status strip.
+          const history = document.getElementById("chat-history");
+          if (history) return history;
+
+          const hostRect = host?.getBoundingClientRect?.();
+          if (!hostRect) return null;
+
+          const candidates = Array.from(document.querySelectorAll(
+            '[data-role="messages"], .messages, .message-list, .chat-messages, .monologue, main, section'
+          ));
+          let best = null;
+          let bestScore = -Infinity;
+
+          for (const el of candidates) {
+            if (!el || el === host || host.contains(el) || el.contains(host)) continue;
+            const rect = el.getBoundingClientRect();
+            if (rect.width < 260 || rect.height < 160) continue;
+            if (rect.bottom > hostRect.top + 24) continue;
+            if (rect.right < hostRect.left + 80 || rect.left > hostRect.right - 80) continue;
+
+            const style = window.getComputedStyle(el);
+            const canScroll = /(auto|scroll)/.test(`${style.overflowY} ${style.overflow}`) || el.scrollHeight > el.clientHeight + 24;
+            const verticalCloseness = Math.max(0, 420 - Math.abs(hostRect.top - rect.bottom));
+            const widthOverlap = Math.min(rect.right, hostRect.right) - Math.max(rect.left, hostRect.left);
+            const score = (canScroll ? 1000 : 0) + verticalCloseness + Math.max(0, widthOverlap) - Math.abs(rect.width - hostRect.width) * 0.15;
+
+            if (score > bestScore) {
+              bestScore = score;
+              best = el;
+            }
+          }
+
+          return best;
+        } catch (_e) {
+          return null;
+        }
+      },
+
+      calendarLowerChromeTop(host) {
+        try {
+          const hostRect = host?.getBoundingClientRect?.();
+          const inputSection = document.getElementById("input-section");
+          const progressBox = document.getElementById("progress-bar-box");
+          const candidates = [progressBox, inputSection, host].filter(Boolean);
+          let top = Number.POSITIVE_INFINITY;
+
+          for (const el of candidates) {
+            const rect = el.getBoundingClientRect();
+            if (!rect || rect.height <= 0) continue;
+            if (rect.bottom < 0) continue;
+            top = Math.min(top, rect.top);
+          }
+
+          if (Number.isFinite(top)) return Math.round(top);
+          return Math.round(hostRect?.top || 0);
+        } catch (_e) {
+          return 0;
+        }
+      },
+
+      liftOutputHost(host, lift) {
+        try {
+          const output = this.calendarOutputHost(host);
+          if (this.calendarOutputEl && this.calendarOutputEl !== output) this.clearOutputLift();
+          if (!output) return;
+
+          this.calendarOutputEl = output;
+          output.classList.add("a0-agent-calendar-output-lifted");
+          if (!output.dataset.a0CalendarHasOriginals) {
+            const computed = window.getComputedStyle(output);
+            output.dataset.a0CalendarHasOriginals = "1";
+            output.dataset.a0CalendarOriginalHeight = output.style.height || "";
+            output.dataset.a0CalendarOriginalMaxHeight = output.style.maxHeight || "";
+            output.dataset.a0CalendarOriginalPaddingBottom = output.style.paddingBottom || "";
+            output.dataset.a0CalendarOriginalMarginBottom = output.style.marginBottom || "";
+            output.dataset.a0CalendarBasePaddingBottom = String(Number.parseFloat(computed.paddingBottom) || 0);
+            output.dataset.a0CalendarBaseHeight = String(output.getBoundingClientRect().height || output.clientHeight || 0);
+          }
+
+          const rect = output.getBoundingClientRect();
+          const lowerTop = this.calendarLowerChromeTop(host);
+          const gap = 2;
+
+          // `liftComposerElements()` runs before this method, so lowerTop is
+          // already the visual top of the lifted prompt/model chrome. Do not
+          // subtract `lift` again here; doing so shrinks/slides #chat-history by
+          // the lift twice and makes the monologue jump too high.
+          const desiredBottom = Math.max(0, lowerTop - gap);
+          const targetHeightFromGeometry = Math.max(140, Math.round(desiredBottom - rect.top));
+          const baseHeight = Number.parseFloat(output.dataset.a0CalendarBaseHeight || "0") || rect.height || output.clientHeight || targetHeightFromGeometry;
+          const targetHeight = Math.min(Math.round(baseHeight), targetHeightFromGeometry);
+          const basePadding = Number.parseFloat(output.dataset.a0CalendarBasePaddingBottom || "0") || 0;
+
+          // Shrink the actual scroll viewport so its bottom edge sits above the
+          // visually lifted Agent/model strip. Padding alone leaves the viewport
+          // behind that strip, which is what caused the monologue to be obscured.
+          output.style.height = `${targetHeight}px`;
+          output.style.maxHeight = `${targetHeight}px`;
+          output.style.paddingBottom = `${Math.round(basePadding + Math.max(0, lift * 0.25))}px`;
+          output.style.marginBottom = "0px";
+          if (typeof output.scrollTop === "number") output.scrollTop = output.scrollTop;
+        } catch (_e) {}
+      },
+
+      clearOutputLift() {
+        try {
+          if (!this.calendarOutputEl) return;
+          const output = this.calendarOutputEl;
+          output.classList.remove("a0-agent-calendar-output-lifted");
+          output.style.height = output.dataset.a0CalendarOriginalHeight || "";
+          output.style.maxHeight = output.dataset.a0CalendarOriginalMaxHeight || "";
+          output.style.paddingBottom = output.dataset.a0CalendarOriginalPaddingBottom || "";
+          output.style.marginBottom = output.dataset.a0CalendarOriginalMarginBottom || "";
+          delete output.dataset.a0CalendarHasOriginals;
+          delete output.dataset.a0CalendarOriginalHeight;
+          delete output.dataset.a0CalendarOriginalMaxHeight;
+          delete output.dataset.a0CalendarOriginalPaddingBottom;
+          delete output.dataset.a0CalendarOriginalMarginBottom;
+          delete output.dataset.a0CalendarBasePaddingBottom;
+          delete output.dataset.a0CalendarBaseHeight;
+          this.calendarOutputEl = null;
+        } catch (_e) {}
+      },
+
+      syncPanelPlacement() {
+        try {
+          if (this.placementCleanupTimer) {
+            window.clearTimeout(this.placementCleanupTimer);
+            this.placementCleanupTimer = null;
+          }
+
+          const anchor = this.calendarAnchor();
+          const button = this.calendarButton();
+          const host = this.calendarActionHost();
+          if (!anchor || !button || !host) return;
+
+          if (this.calendarHostEl && this.calendarHostEl !== host) {
+            this.calendarHostEl.classList.remove("a0-agent-calendar-host-lifted");
+            this.calendarHostEl.style.removeProperty("--a0-calendar-panel-lift");
+          }
+          this.calendarHostEl = host;
+
+          const hostRect = host.getBoundingClientRect();
+          const buttonRect = button.getBoundingClientRect();
+          const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 800;
+          const marginValue = getComputedStyle(anchor).getPropertyValue("--a0-calendar-panel-margin").trim();
+          const margin = Number.parseFloat(marginValue) || 8;
+
+          const anchorRect = anchor.getBoundingClientRect();
+          const reference = this.calendarComposerReferenceEl(host);
+          const referenceRect = reference?.getBoundingClientRect?.();
+          const activeReferenceLift = reference
+            ? (Number.parseFloat(reference.style.getPropertyValue("--a0-calendar-panel-lift")) ||
+              Number.parseFloat(getComputedStyle(reference).getPropertyValue("--a0-calendar-panel-lift")) ||
+              0)
+            : 0;
+          const panelBottom = Math.round(anchorRect.top || buttonRect.top || hostRect.top);
+          const referenceUnliftedBottom = referenceRect
+            ? Math.round(referenceRect.bottom + activeReferenceLift)
+            : null;
+          const originalComposerGap = referenceUnliftedBottom !== null
+            ? Math.max(0, Math.round(panelBottom - referenceUnliftedBottom))
+            : 0;
+          const desiredComposerGap = Math.max(2, Math.round(margin * 0.35));
+          // Keep the stack panel compact now that item editing opens in a modal,
+          // while still capping it to the available space above the bottom action row.
+          const panelViewportLimit = Math.max(160, Math.round(Math.min(
+            viewportHeight - (margin * 2),
+            panelBottom - margin,
+          )));
+          const baseHeight = Math.round(Math.min(330, panelViewportLimit, Math.max(210, viewportHeight * 0.27)));
+          const desiredHeight = Math.min(
+            panelViewportLimit,
+            Math.max(baseHeight, originalComposerGap + desiredComposerGap),
+          );
+
+          // The panel is anchored to the bottom action row and opens upward.
+          // If we lift the composer by the full panel height, the old distance
+          // between composer and action row remains as a visible gap. Subtract
+          // that original gap so the lifted composer lands just above the panel.
+          const lift = Math.max(0, Math.round(desiredHeight - originalComposerGap + desiredComposerGap));
+          const boundsCandidates = [
+            referenceRect,
+            document.getElementById("chat-input-container")?.getBoundingClientRect?.(),
+            document.getElementById("input-section")?.getBoundingClientRect?.(),
+            this.calendarOutputHost(host)?.getBoundingClientRect?.(),
+            hostRect,
+          ].filter((rect) => rect && rect.width > 0);
+          const contentRect = boundsCandidates.find((rect) => rect.width >= 260) || hostRect;
+          const viewportWidth = window.innerWidth || document.documentElement.clientWidth || hostRect.width || 1024;
+          const viewportLeft = margin;
+          const viewportRight = viewportWidth - margin;
+          const panelLeft = Math.max(viewportLeft, Math.round(contentRect.left));
+          const panelRight = Math.min(viewportRight, Math.round(contentRect.right));
+          const availableWidth = Math.max(240, panelRight - panelLeft);
+          const panelWidth = Math.max(240, Math.min(1120, availableWidth));
+          const offsetLeft = Math.round((anchorRect.left || buttonRect.left) - panelLeft);
+          const tabLeft = Math.max(0, Math.min(panelWidth - buttonRect.width, Math.round(buttonRect.left - panelLeft)));
+
+          anchor.style.setProperty("--a0-calendar-panel-width", `${Math.round(panelWidth)}px`);
+          anchor.style.setProperty("--a0-calendar-panel-height", `${desiredHeight}px`);
+          anchor.style.setProperty("--a0-calendar-panel-max-height", `${desiredHeight}px`);
+          anchor.style.setProperty("--a0-calendar-tab-offset-left", `${offsetLeft}px`);
+          anchor.style.setProperty("--a0-calendar-tab-width", `${Math.ceil(buttonRect.width)}px`);
+          anchor.style.setProperty("--a0-calendar-tab-left", `${tabLeft}px`);
+
+          host.classList.add("a0-agent-calendar-host-lifted");
+          this.liftComposerElements(host, lift);
+          this.liftOutputHost(host, lift);
+        } catch (_e) {}
+      },
+
+      clearPanelPlacement() {
+        try {
+          const anchor = this.calendarAnchor();
+          if (this.calendarHostEl) {
+            this.calendarHostEl.classList.remove("a0-agent-calendar-host-lifted");
+            this.calendarHostEl.style.removeProperty("--a0-calendar-panel-lift");
+            this.calendarHostEl = null;
+          }
+          if (anchor) {
+            anchor.style.removeProperty("--a0-calendar-panel-width");
+            anchor.style.removeProperty("--a0-calendar-panel-height");
+            anchor.style.removeProperty("--a0-calendar-panel-max-height");
+            anchor.style.removeProperty("--a0-calendar-tab-offset-left");
+            anchor.style.removeProperty("--a0-calendar-tab-width");
+            anchor.style.removeProperty("--a0-calendar-tab-left");
+          }
+          this.clearComposerLift();
+          this.clearOutputLift();
+        } catch (_e) {}
+      },
+
+      schedulePanelPlacement() {
+        try {
+          if (!this.visible) return;
+          if (this.calendarResizeRaf) window.cancelAnimationFrame(this.calendarResizeRaf);
+          this.calendarResizeRaf = window.requestAnimationFrame(() => {
+            this.calendarResizeRaf = 0;
+            this.syncPanelPlacement();
+          });
+        } catch (_e) {}
+      },
+
+      installCalendarResizeListener() {
+        try {
+          if (this.calendarResizeHandler) return;
+          this.calendarResizeHandler = () => this.schedulePanelPlacement();
+          window.addEventListener("resize", this.calendarResizeHandler, { passive: true });
+          window.addEventListener("orientationchange", this.calendarResizeHandler, { passive: true });
+          window.visualViewport?.addEventListener?.("resize", this.calendarResizeHandler, { passive: true });
+        } catch (_e) {}
+      },
+
+      removeCalendarResizeListener() {
+        try {
+          if (this.calendarResizeHandler) {
+            window.removeEventListener("resize", this.calendarResizeHandler);
+            window.removeEventListener("orientationchange", this.calendarResizeHandler);
+            window.visualViewport?.removeEventListener?.("resize", this.calendarResizeHandler);
+            this.calendarResizeHandler = null;
+          }
+          if (this.calendarResizeRaf) {
+            window.cancelAnimationFrame(this.calendarResizeRaf);
+            this.calendarResizeRaf = 0;
+          }
+        } catch (_e) {}
+      },
+
+      syncTabWidth() {
+        this.syncPanelPlacement();
+      },
+
+      async onContextChanged(nextCtxid) {
+        const next = String(nextCtxid || "").trim();
+        // First call: prime tracking without re-running side effects on initial mount.
+        if (this._ctxLastSeen === null) {
+          this._ctxLastSeen = next;
+          if (!this.ctxid && next) this.ctxid = next;
+          return;
+        }
+        if (next === this._ctxLastSeen) return;
+        this._ctxLastSeen = next;
+
+        // Inflight guard: if we are already refreshing for this ctxid, skip.
+        if (this._ctxRefreshInflight && this._ctxRefreshInflight === next) return;
+
+        // Reset per-agent state since the focused agent changed.
+        this.ctxid = next;
+        this.agentName = "";
+        this.error = "";
+        this.files = [];
+        this.caldavAccount = null;
+        this.caldavAccounts = [];
+        this.caldavEvents = [];
+        this.selectedCaldavAccountId = "";
+        this.selectedCaldavCollectionLabel = "";
+        this.selectedCaldavCollectionUrl = "";
+        this.selectedCaldavHref = "";
+        this.selectedSource = "local";
+        this.closeIcsFile();
+
+        if (!next) return;
+
+        // Pull a friendly name eagerly; refresh() will also re-derive from API.
+        const selectedName = selectedContextDisplayName();
+        if (selectedName && selectedName !== next) this.agentName = selectedName;
+
+        // Only re-fetch immediately when the panel is open; otherwise the next
+        // openCalendar() call will fetch fresh data for the new agent.
+        if (!this.visible) return;
+
+        this._ctxRefreshInflight = next;
+        try {
+          await this.refresh();
+        } finally {
+          if (this._ctxRefreshInflight === next) this._ctxRefreshInflight = "";
+        }
+      },
+
+      agentDisplayName() {
+        const name = String(this.agentName || "").trim();
+        const ctxid = String(this.ctxid || "").trim();
+        return name && name !== ctxid ? name : "Agent";
+      },
+
+      todayIsoDate() {
+        return new Date().toISOString().slice(0, 10);
+      },
+
+      defaultEventForm() {
+        const today = this.todayIsoDate();
+        return {
+          uid: "",
+          summary: "",
+          description: "",
+          location: "",
+          start_date: today,
+          start_time: "09:00",
+          end_date: today,
+          end_time: "10:00",
+          all_day: false,
+          recurrence_frequency: "none",
+          recurrence_interval: "1",
+          recurrence_count: "",
+          recurrence_until: "",
+          rrule: "",
+          rdate: "",
+          exdate: "",
+        };
+      },
+
+      normalizeEventForm(event = {}) {
+        const today = this.todayIsoDate();
+        return {
+          uid: String(event.uid || ""),
+          summary: String(event.summary || ""),
+          description: String(event.description || ""),
+          location: String(event.location || ""),
+          start_date: String(event.start_date || today),
+          start_time: String(event.start_time || "09:00").slice(0, 5),
+          end_date: String(event.end_date || event.start_date || today),
+          end_time: String(event.end_time || event.start_time || "10:00").slice(0, 5),
+          all_day: Boolean(event.all_day),
+          recurrence_frequency: String(event.recurrence_frequency || (event.is_recurring ? "custom" : "none") || "none"),
+          recurrence_interval: String(event.recurrence_interval || "1"),
+          recurrence_count: String(event.recurrence_count || ""),
+          recurrence_until: String(event.recurrence_until || ""),
+          rrule: String(event.rrule || ""),
+          rdate: String(event.rdate || ""),
+          exdate: String(event.exdate || ""),
+        };
+      },
+
+      defaultTodoForm() {
+        const today = this.todayIsoDate();
+        return {
+          uid: "",
+          summary: "",
+          description: "",
+          location: "",
+          start_date: "",
+          start_time: "09:00",
+          due_date: today,
+          due_time: "17:00",
+          all_day: false,
+          status: "NEEDS-ACTION",
+          priority: "",
+          percent_complete: "",
+          recurrence_frequency: "none",
+          recurrence_interval: "1",
+          recurrence_count: "",
+          recurrence_until: "",
+          rrule: "",
+          rdate: "",
+          exdate: "",
+        };
+      },
+
+      normalizeTodoForm(todo = {}) {
+        const today = this.todayIsoDate();
+        return {
+          uid: String(todo.uid || ""),
+          summary: String(todo.summary || ""),
+          description: String(todo.description || ""),
+          location: String(todo.location || ""),
+          start_date: String(todo.start_date || ""),
+          start_time: String(todo.start_time || "09:00").slice(0, 5),
+          due_date: String(todo.due_date || today),
+          due_time: String(todo.due_time || "17:00").slice(0, 5),
+          all_day: Boolean(todo.all_day),
+          status: String(todo.status || "NEEDS-ACTION"),
+          priority: String(todo.priority || ""),
+          percent_complete: String(todo.percent_complete || ""),
+          recurrence_frequency: String(todo.recurrence_frequency || "none"),
+          recurrence_interval: String(todo.recurrence_interval || "1"),
+          recurrence_count: String(todo.recurrence_count || ""),
+          recurrence_until: String(todo.recurrence_until || ""),
+          rrule: String(todo.rrule || ""),
+          rdate: String(todo.rdate || ""),
+          exdate: String(todo.exdate || ""),
+        };
+      },
+
+      switchComponentKind() {
+        // No persistence side effect: simply reset the inactive form so the
+        // user can fill the freshly-selected component type from scratch.  The
+        // backend rewrites the file on save based on the chosen action.
+        if (this.componentKind === "event") {
+          if (!this.eventForm || !Object.keys(this.eventForm).length) {
+            this.eventForm = this.defaultEventForm();
+          }
+        } else if (this.componentKind === "todo") {
+          if (!this.todoForm || !Object.keys(this.todoForm).length) {
+            this.todoForm = this.defaultTodoForm();
+          }
+        }
+      },
+
+      buildSimpleRRule() {
+        const form = this.eventForm || {};
+        const frequency = String(form.recurrence_frequency || "none").toLowerCase();
+        const freqMap = { minutely: "MINUTELY", hourly: "HOURLY", daily: "DAILY", weekly: "WEEKLY", monthly: "MONTHLY", yearly: "YEARLY" };
+        if (!freqMap[frequency]) return "";
+        const parts = [`FREQ=${freqMap[frequency]}`];
+        const interval = Number.parseInt(String(form.recurrence_interval || "1"), 10);
+        if (Number.isFinite(interval) && interval > 1) parts.push(`INTERVAL=${interval}`);
+        const count = Number.parseInt(String(form.recurrence_count || ""), 10);
+        if (Number.isFinite(count) && count > 0) {
+          parts.push(`COUNT=${count}`);
+        } else {
+          const until = String(form.recurrence_until || "").trim();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(until)) parts.push(`UNTIL=${until.replaceAll("-", "")}T235959Z`);
+        }
+        return parts.join(";");
+      },
+
+      syncRecurrenceRule() {
+        if (!this.eventForm) return;
+        const frequency = String(this.eventForm.recurrence_frequency || "none").toLowerCase();
+        if (frequency === "none") {
+          this.eventForm.rrule = "";
+          this.eventForm.rdate = "";
+          this.eventForm.exdate = "";
+          return;
+        }
+        if (frequency !== "custom") this.eventForm.rrule = this.buildSimpleRRule();
+      },
+
+      editorTitle() {
+        const source = String(this.selectedSource || "local").toLowerCase();
+        const kind = this.componentKind === "todo" ? "Todo" : "Event";
+        const eventSummary = String(this.eventForm?.summary || "").trim();
+        const todoSummary = String(this.todoForm?.summary || "").trim();
+        const summary = this.componentKind === "todo" ? todoSummary : eventSummary;
+        if (summary) return `${kind}: ${summary}`;
+        if (source === "caldav") return `CalDAV ${kind}`;
+        return `${kind} editor`;
+      },
+
+      editorSubtitle() {
+        const source = String(this.selectedSource || "local").toLowerCase();
+        if (source === "caldav") {
+          const collection = String(this.selectedCaldavCollectionLabel || this.selectedCaldavCollectionUrl || "").trim();
+          return collection ? `CalDAV collection: ${collection}` : "CalDAV item";
+        }
+        if (this.pendingLocalCalendar) {
+          return "New local ICS item — filename will be derived from Summary when saved";
+        }
+        const name = String(this.selectedFileName || this.selectedFile?.name || "").trim();
+        return name ? `Local ICS file: ${name}` : "Local ICS item";
+      },
+
+      saveCurrentItem() {
+        if (this.selectedSource === "caldav") return this.saveCaldavEvent();
+        if (this.componentKind === "todo") return this.saveTodo();
+        return this.saveEvent();
+      },
+
+      deleteCurrentItem() {
+        if (this.selectedSource === "caldav") return this.deleteCaldavEvent({ href: this.selectedCaldavHref });
+        if (this.componentKind === "todo") return this.deleteTodo(this.todoForm?.uid || "");
+        return this.deleteEvent(this.eventForm?.uid || "");
+      },
+
+      applyFileResult(result) {
+        if (!result || result.ok === false) {
+          this.error = result?.error || "Calendar file API returned an error.";
+          return;
+        }
+        this.selectedFile = result.file || this.selectedFile;
+        this.selectedFileName = this.selectedFile?.name || this.selectedFileName;
+        if (this.selectedSource === "local" && result.file) this.mergeLocalFileIntoList(result.file);
+        this.pendingLocalCalendar = false;
+        const events = Array.isArray(result.events) ? result.events : [];
+        const todos = Array.isArray(result.todos) ? result.todos : [];
+        this.selectedEvents = events;
+        const singleEvent = result.event || events[0] || null;
+        const singleTodo = result.todo || todos[0] || null;
+        const fileKind = String(result.component_kind || result.file?.component_kind || "").toLowerCase();
+
+        if (singleEvent) {
+          this.eventForm = this.normalizeEventForm(singleEvent);
+          this.originalEventUid = String(singleEvent.uid || "");
+        } else {
+          this.eventForm = this.defaultEventForm();
+          this.originalEventUid = "";
+        }
+        if (singleTodo) {
+          this.todoForm = this.normalizeTodoForm(singleTodo);
+          this.originalTodoUid = String(singleTodo.uid || "");
+        } else {
+          this.todoForm = this.defaultTodoForm();
+          this.originalTodoUid = "";
+        }
+
+        if (fileKind === "event") this.componentKind = "event";
+        else if (fileKind === "todo") this.componentKind = "todo";
+        // empty file: keep current selection
+
+        this.notifyCalendarIndicatorChanged(result);
+        this.error = "";
+        if (this.visible) window.requestAnimationFrame(() => this.syncPanelPlacement());
+      },
+
+      closeIcsFile() {
+        this.selectedFileName = "";
+        this.pendingLocalCalendar = false;
+        this.selectedFile = null;
+        this.selectedEvents = [];
+        this.eventForm = {};
+        this.todoForm = {};
+        this.originalEventUid = "";
+        this.originalTodoUid = "";
+        this.selectedCaldavHref = "";
+        if (this.selectedSource === "caldav") this.selectedSource = "local";
+        if (this.visible) window.requestAnimationFrame(() => this.syncPanelPlacement());
+      },
+
+      newEvent() {
+        this.eventForm = this.defaultEventForm();
+        this.originalEventUid = "";
+      },
+
+      editEvent(event) {
+        this.eventForm = this.normalizeEventForm(event);
+        this.originalEventUid = String(event?.uid || "");
+      },
+
+      async toggleCalendar() {
+        if (this.visible) {
+          this.closeCalendar();
+          return;
+        }
+        await this.openCalendar();
+      },
+      async openCalendar() {
+        this.visible = true;
+        this.installCalendarResizeListener();
+        const nextCtxid = selectedContextId();
+        if (nextCtxid !== this.ctxid) this.agentName = "";
+        this.ctxid = nextCtxid;
+        const selectedName = selectedContextDisplayName();
+        if (selectedName && selectedName !== this.ctxid) this.agentName = selectedName;
+        window.requestAnimationFrame(() => this.syncPanelPlacement());
+        await this.refresh();
+        if (this.caldavAccount?.selected_collection_url) this.refreshCaldavSyncStatus();
+        window.requestAnimationFrame(() => this.syncPanelPlacement());
+      },
+
+      closeCalendar() {
+        this.visible = false;
+        this.removeCalendarResizeListener();
+        if (this.placementCleanupTimer) window.clearTimeout(this.placementCleanupTimer);
+        this.placementCleanupTimer = window.setTimeout(() => this.clearPanelPlacement(), 220);
+      },
+
+      async refresh() {
+        this.error = "";
+        this.ctxid = this.ctxid || selectedContextId();
+        if (!this.ctxid) {
+          this.error = "No active context is selected.";
+          return;
+        }
+        this.loading = true;
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "list",
+            ctxid: this.ctxid,
+          });
+          this.applyResult(result);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to load calendar stack", error);
+          this.error = String(error?.message || error || "Failed to load calendar stack");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      notifyCalendarIndicatorChanged(result) {
+        if (!result || result.has_calendar === undefined) return;
+        try {
+          Alpine.store("superordinates")?.fetchMap?.();
+        } catch (_error) {
+          // Non-critical; the sidebar also refreshes periodically.
+        }
+      },
+
+      applyResult(result) {
+        if (!result || result.ok === false) {
+          this.error = result?.error || "Calendar API returned an error.";
+          return;
+        }
+        this.ctxid = result.ctxid || this.ctxid;
+        const resultAgentName = String(result.agent_name || "").trim();
+        if (resultAgentName && resultAgentName !== this.ctxid) this.agentName = resultAgentName;
+        this.calendarDir = result.calendar_dir || "";
+        this.files = Array.isArray(result.files) ? result.files : [];
+        const account = result.caldav_account || (Array.isArray(result.caldav_accounts) ? result.caldav_accounts[0] : null) || null;
+        this.caldavAccount = account;
+        this.caldavAccounts = account ? [account] : [];
+        this.selectedCaldavCollectionUrl = String(account?.selected_collection_url || "");
+        this.caldavSyncStatus = result?.caldav_sync_status || result?.sync_status || this.caldavSyncStatus || null;
+        this.hydrateCaldavFormFromAccount();
+        this.notifyCalendarIndicatorChanged(result);
+        if (this.selectedSource === "local" && this.selectedFileName && !this.pendingLocalCalendar && !this.files.some((file) => file?.name === this.selectedFileName)) this.closeIcsFile();
+        if (this.selectedSource === "caldav" && (!this.caldavAccount ||
+            (this.selectedCaldavAccountId && String(this.caldavAccount?.id || "") !== String(this.selectedCaldavAccountId)))) {
+          this.closeCaldavCollection();
+        }
+        this.error = "";
+        if (this.visible) window.requestAnimationFrame(() => this.syncPanelPlacement());
+      },
+
+      createLocalCalendar() {
+        this.selectedSource = "local";
+        this.selectedFileName = "__new_local_calendar__";
+        this.pendingLocalCalendar = true;
+        this.selectedFile = null;
+        this.selectedEvents = [];
+        this.componentKind = "event";
+        this.eventForm = this.defaultEventForm();
+        this.todoForm = this.defaultTodoForm();
+        this.originalEventUid = "";
+        this.originalTodoUid = "";
+        this.selectedCaldavHref = "";
+        this.error = "";
+        if (this.visible) window.requestAnimationFrame(() => this.syncPanelPlacement());
+      },
+
+      async deleteLocalCalendar(file) {
+        if (!file?.name) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "delete_ics",
+            ctxid: this.ctxid || selectedContextId(),
+            filename: file.name,
+          });
+          this.applyResult(result);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to delete .ics file", error);
+          this.error = String(error?.message || error || "Failed to delete .ics file");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async openIcsFile(file) {
+        if (!file?.name) return;
+        this.selectedSource = "local";
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "read_ics",
+            ctxid: this.ctxid || selectedContextId(),
+            filename: file.name,
+          });
+          this.applyFileResult(result);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to open .ics file", error);
+          this.error = String(error?.message || error || "Failed to open .ics file");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async saveTodo() {
+        const creatingLocal = Boolean(this.pendingLocalCalendar && this.selectedSource === "local");
+        if (!this.selectedFileName && !creatingLocal) {
+          this.error = "Open a local .ics file first.";
+          return;
+        }
+        if (!String(this.todoForm?.summary || "").trim()) {
+          this.error = "Summary is required.";
+          return;
+        }
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "upsert_todo",
+            ctxid: this.ctxid || selectedContextId(),
+            filename: creatingLocal ? "" : this.selectedFileName,
+            old_uid: creatingLocal ? "" : this.originalTodoUid,
+            todo: this.todoForm,
+          });
+          const savedFile = result?.file || null;
+          this.applyFileResult(result);
+          await this.refresh();
+          if (savedFile) this.mergeLocalFileIntoList(savedFile);
+          if (creatingLocal) this.closeIcsFile();
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to save todo", error);
+          this.error = String(error?.message || error || "Failed to save todo");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async deleteTodo(uid) {
+        const cleanUid = String(uid || "").trim();
+        if (!this.selectedFileName) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "delete_todo",
+            ctxid: this.ctxid || selectedContextId(),
+            filename: this.selectedFileName,
+            uid: cleanUid,
+          });
+          this.applyFileResult(result);
+          await this.refresh();
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to clear todo", error);
+          this.error = String(error?.message || error || "Failed to clear todo");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async saveEvent() {
+        const creatingLocal = Boolean(this.pendingLocalCalendar && this.selectedSource === "local");
+        if (!this.selectedFileName && !creatingLocal) {
+          this.error = "Open a local .ics file first.";
+          return;
+        }
+        if (creatingLocal && !String(this.eventForm?.summary || "").trim()) {
+          this.error = "Summary is required.";
+          return;
+        }
+        if (!String(this.eventForm?.start_date || "").trim()) {
+          this.error = "Start date is required.";
+          return;
+        }
+        this.syncRecurrenceRule();
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "upsert_event",
+            ctxid: this.ctxid || selectedContextId(),
+            filename: creatingLocal ? "" : this.selectedFileName,
+            old_uid: creatingLocal ? "" : this.originalEventUid,
+            event: this.eventForm,
+          });
+          const savedFile = result?.file || null;
+          this.applyFileResult(result);
+          await this.refresh();
+          if (savedFile) this.mergeLocalFileIntoList(savedFile);
+          this.closeIcsFile();
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to save event", error);
+          this.error = String(error?.message || error || "Failed to save event");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async deleteEvent(uid) {
+        const cleanUid = String(uid || "").trim();
+        if (!this.selectedFileName) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "delete_event",
+            ctxid: this.ctxid || selectedContextId(),
+            filename: this.selectedFileName,
+            uid: cleanUid,
+          });
+          this.applyFileResult(result);
+          await this.refresh();
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to clear event", error);
+          this.error = String(error?.message || error || "Failed to clear event");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      caldavWebUrl(account) {
+        return caldavWebUrl(account);
+      },
+
+      _emptyCaldavForm() {
+        return { server_url: "", webui_calendar_url: "", username: "", password: "" };
+      },
+
+      safeHttpUrl(value) {
+        return safeHttpUrl(value);
+      },
+
+      caldavStatusKind() {
+        const acc = this.caldavAccount || null;
+        if (!acc || !String(acc.server_url || acc.url || "").trim()) return "empty";
+        const status = String(acc.status || acc.connection_status || "").toLowerCase();
+        if (["ok", "connected", "success", "working"].includes(status)) return "ok";
+        if (["error", "failed", "fail", "invalid"].includes(status)) return "error";
+        return "empty";
+      },
+
+      caldavStatusGlyph() {
+        const kind = this.caldavStatusKind();
+        if (kind === "ok") return "✓";
+        if (kind === "error") return "✕";
+        return "O";
+      },
+
+      caldavStatusClass() {
+        return `a0-agent-calendar-caldav-status-${this.caldavStatusKind()}`;
+      },
+
+      caldavStatusTitle() {
+        const kind = this.caldavStatusKind();
+        if (kind === "ok") return "CalDAV connection works";
+        if (kind === "error") return "CalDAV connection failed";
+        return "CalDAV connection not configured";
+      },
+
+      hydrateCaldavFormFromAccount() {
+        const acc = this.caldavAccount || null;
+        if (!acc) {
+          this.newCaldav = this._emptyCaldavForm();
+          return;
+        }
+        this.newCaldav = {
+          server_url: String(acc.server_url || ""),
+          webui_calendar_url: caldavWebUrl(acc),
+          username: String(acc.username || ""),
+          password: "",
+        };
+      },
+
+      beginEditCaldavAccount() {
+        this.hydrateCaldavFormFromAccount();
+        this.editingCaldavAccount = true;
+      },
+
+      cancelEditCaldavAccount() {
+        this.newCaldav = this._emptyCaldavForm();
+        this.editingCaldavAccount = false;
+      },
+
+      caldavCollectionLabel(collection) {
+        if (!collection) return "";
+        return String(collection.display_name || collection.displayName || collection.name || collection.url || "").trim() || "Collection";
+      },
+
+      caldavCollections() {
+        const acc = this.caldavAccount || null;
+        if (!acc) return [];
+        const raw = Array.isArray(acc.collections) ? acc.collections : [];
+        const seen = new Set();
+        const collections = [];
+        raw.forEach((collection) => {
+          if (!collection || typeof collection !== "object") return;
+          const url = String(collection.url || "").trim();
+          if (!url || seen.has(url)) return;
+          seen.add(url);
+          collections.push({
+            ...collection,
+            url,
+            display_name: this.caldavCollectionLabel(collection),
+          });
+        });
+        const selectedUrl = String(acc.selected_collection_url || "").trim();
+        if (selectedUrl && !seen.has(selectedUrl)) {
+          collections.unshift({
+            url: selectedUrl,
+            name: acc.selected_collection_name || selectedUrl,
+            display_name: acc.selected_collection_name || selectedUrl,
+          });
+        }
+        return collections;
+      },
+
+      async refreshCaldavCollections() {
+        await this.testCaldavAccount();
+      },
+
+      async refreshCaldavCollectionsForDropdown() {
+        if (!this.caldavAccount || this.collectionRefreshInflight || this.loading) return;
+        this.collectionRefreshInflight = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "test_caldav_account",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.applyResult(result);
+          const test = result?.test;
+          if (test && test.ok === false) {
+            if (this.caldavAccount) {
+              this.caldavAccount = { ...this.caldavAccount, status: "error" };
+              this.caldavAccounts = [this.caldavAccount];
+            }
+            this.error = test.error || "CalDAV verification failed.";
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to refresh CalDAV collections from dropdown", error);
+          if (this.caldavAccount) {
+            this.caldavAccount = { ...this.caldavAccount, status: "error" };
+            this.caldavAccounts = [this.caldavAccount];
+          }
+          this.error = String(error?.message || error || "Failed to refresh CalDAV collections");
+        } finally {
+          this.collectionRefreshInflight = false;
+        }
+      },
+
+      formatSyncAge(seconds) {
+        if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return "never";
+        const sec = Math.max(0, Number(seconds || 0));
+        if (sec < 60) return `${Math.round(sec)}s ago`;
+        const min = Math.round(sec / 60);
+        if (min < 60) return `${min}m ago`;
+        const hours = Math.floor(min / 60);
+        const rem = min % 60;
+        return rem ? `${hours}h ${rem}m ago` : `${hours}h ago`;
+      },
+
+      caldavSyncStatusText() {
+        const status = this.caldavSyncStatus || null;
+        if (!this.caldavAccount || !status) return "";
+        const state = String(status.state || "");
+        const conflicts = Number(status.conflict_count || 0);
+        if (state === "syncing" || status.syncing) return "Syncing…";
+        if (conflicts > 0 || state === "conflict") return `Conflicts: ${conflicts} item${conflicts === 1 ? "" : "s"} need resolution`;
+        if (state === "never") return "Not synced yet";
+        if (state === "error") return `Sync error: ${status.last_error || "last sync failed"}`;
+        const age = this.formatSyncAge(status.age_seconds);
+        if (state === "stale" || status.stale) return `Last synced ${age}`;
+        if (state === "warning") return `Last synced ${age}`;
+        if (status.last_success_at) return `Last synced ${age}`;
+        return "";
+      },
+
+      async refreshCaldavSyncStatus() {
+        if (!this.caldavAccount || !this.caldavAccount.selected_collection_url) return;
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "get_caldav_sync_status",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.caldavSyncStatus = result?.sync_status || result?.caldav_sync_status || this.caldavSyncStatus || null;
+        } catch (error) {
+          console.warn("[Agent Calendar] Failed to refresh CalDAV sync status", error);
+        }
+      },
+
+      syncSummaryText(sync) {
+        const data = sync || {};
+        const remoteScan = data.remote_scan || {};
+        const bits = [
+          `Scanned ${data.scanned_collection || "selected collection"}`,
+          `remote ${Number(data.remote_count || 0)} parsed / ${Number(remoteScan.objects_seen || 0)} seen`,
+          `local ${Number(data.local_count || 0)}`,
+          `downloaded ${Number(data.downloaded || 0)}`,
+          `uploaded ${Number(data.uploaded || 0)}`,
+          `deleted local ${Number(data.deleted_local || 0)}`,
+          `deleted remote ${Number(data.deleted_remote || 0)}`,
+          `conflicts ${Number(data.conflicts || 0)}`,
+          `skipped ${Number(data.skipped || 0)}`,
+        ];
+        if (Number(remoteScan.date_search_listed || 0)) bits.push(`date-search ${Number(remoteScan.date_search_listed || 0)}`);
+        if (Array.isArray(remoteScan.listing_errors) && remoteScan.listing_errors.length) bits.push(`listing warnings ${remoteScan.listing_errors.length}`);
+        if (Array.isArray(data.errors) && data.errors.length) bits.push(`errors ${data.errors.length}`);
+        return bits.join(" · ");
+      },
+
+      async syncCaldavIcsFiles() {
+        if (!this.caldavAccount) {
+          this.error = "Configure a CalDAV account before syncing ICS files.";
+          return;
+        }
+        if (!this.caldavAccount.selected_collection_url) {
+          this.error = "Select a CalDAV collection before syncing ICS files.";
+          return;
+        }
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "sync_caldav_ics_files",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.applyResult(result);
+          const sync = result?.sync || {};
+          this.caldavSyncStatus = result?.sync_status || result?.caldav_sync_status || this.caldavSyncStatus || null;
+          this.lastSyncSummary = this.syncSummaryText(sync);
+          if (sync.ok === false || result?.ok === false) {
+            this.error = result?.error || (Array.isArray(sync.errors) ? sync.errors.join("; ") : "CalDAV/ICS sync failed.");
+          } else {
+            this.error = "";
+          }
+          if (this.selectedSource === "caldav" && this.selectedCaldavAccountId) {
+            await this.refreshCaldavEvents();
+          }
+          if (this.visible) window.requestAnimationFrame(() => this.syncPanelPlacement());
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to sync CalDAV and local ICS files", error);
+          if (this.caldavAccount) {
+            this.caldavAccount = { ...this.caldavAccount, status: "error" };
+            this.caldavAccounts = [this.caldavAccount];
+          }
+          this.error = String(error?.message || error || "Failed to sync CalDAV and local ICS files");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async addCaldavAccount() {
+        const url = String(this.newCaldav?.server_url || "").trim();
+        const webUrl = String(this.newCaldav?.webui_calendar_url || "").trim();
+        const user = String(this.newCaldav?.username || "").trim();
+        const pass = String(this.newCaldav?.password || "");
+        const hasExistingPassword = Boolean(this.caldavAccount?.has_password);
+        if (!url || !user || (!pass && !hasExistingPassword)) {
+          this.error = "CalDAV server URL, username, and password are required.";
+          return;
+        }
+        if (webUrl && !/^https?:\/\//i.test(webUrl)) {
+          this.error = "WebUI Calendar URL must start with http:// or https://.";
+          return;
+        }
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "set_caldav_account",
+            ctxid: this.ctxid || selectedContextId(),
+            label: "",
+            server_url: url,
+            webui_calendar_url: webUrl,
+            username: user,
+            password: pass,
+          });
+          this.applyResult(result);
+          if (!this.error) {
+            const account = result?.caldav_account || result?.set || result?.added;
+            this.hydrateCaldavFormFromAccount();
+            this.editingCaldavAccount = false;
+            // Auto-test the configured singleton so the user sees collection discovery immediately.
+            if (account?.id) await this.testCaldavAccount();
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to configure CalDAV account", error);
+          this.error = String(error?.message || error || "Failed to configure CalDAV account");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async removeCaldavAccount() {
+        if (!this.caldavAccount) return;
+        if (!window.confirm("Remove this CalDAV account?")) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "remove_caldav_account",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.closeCaldavCollection();
+          this.newCaldav = this._emptyCaldavForm();
+          this.editingCaldavAccount = false;
+          this.applyResult(result);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to remove CalDAV account", error);
+          this.error = String(error?.message || error || "Failed to remove CalDAV account");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async testCaldavAccount() {
+        if (!this.caldavAccount) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "test_caldav_account",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.applyResult(result);
+          const test = result?.test;
+          if (test && test.ok === false) {
+            if (this.caldavAccount) {
+              this.caldavAccount = { ...this.caldavAccount, status: "error" };
+              this.caldavAccounts = [this.caldavAccount];
+            }
+            this.error = test.error || "CalDAV verification failed.";
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to test CalDAV account", error);
+          if (this.caldavAccount) {
+            this.caldavAccount = { ...this.caldavAccount, status: "error" };
+            this.caldavAccounts = [this.caldavAccount];
+          }
+          this.error = String(error?.message || error || "Failed to test CalDAV account");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async selectCaldavCollection(collectionUrl) {
+        const cleanUrl = String(collectionUrl || "").trim();
+        this.selectedCaldavCollectionUrl = cleanUrl;
+        if (!this.caldavAccount || !cleanUrl) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "select_caldav_collection",
+            ctxid: this.ctxid || selectedContextId(),
+            collection_url: cleanUrl,
+          });
+          this.applyResult(result);
+          if (this.caldavAccount?.selected_collection_url) {
+            this.selectedCaldavCollectionUrl = String(this.caldavAccount.selected_collection_url || "");
+            this.selectedCaldavCollectionLabel = this.caldavAccount.selected_collection_name || this.caldavAccount.selected_collection_url;
+          }
+          if (this.selectedSource === "caldav") {
+            this.selectedCaldavHref = "";
+            await this.refreshCaldavEvents();
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to select CalDAV collection", error);
+          this.error = String(error?.message || error || "Failed to select CalDAV collection");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      _findCaldavAccount(id) {
+        const acc = this.caldavAccount || null;
+        if (!acc) return null;
+        if (!id || String(acc?.id || "") === String(id || "")) return acc;
+        return null;
+      },
+
+      async openConfiguredWebCalendar() {
+        const url = safeHttpUrl(this.newCaldav?.webui_calendar_url);
+        if (!url) {
+          this.error = "Configure WebUI Calendar URL to open calendar.";
+          return;
+        }
+        this.error = "";
+        try {
+          await openUrlInAgentBrowser(url);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to open Calendar Web URL", error);
+          this.error = String(error?.message || error || "Failed to open Calendar Web URL");
+        }
+      },
+
+      async openCaldavWebCalendar() {
+        const url = safeHttpUrl(caldavWebUrl(this.caldavAccount));
+        if (!url) {
+          this.error = "Configure WebUI Calendar URL to open calendar.";
+          return;
+        }
+        this.error = "";
+        try {
+          await openUrlInAgentBrowser(url);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to open Calendar Web URL", error);
+          this.error = String(error?.message || error || "Failed to open Calendar Web URL");
+        }
+      },
+
+      async openCaldavCollection(id) {
+        const acc = this._findCaldavAccount(id);
+        if (!acc) return;
+        if (!acc.selected_collection_url) {
+          this.error = "Pick a CalDAV collection first.";
+          return;
+        }
+        this.selectedCaldavAccountId = String(acc.id || "singleton");
+        this.selectedCaldavCollectionLabel = acc.selected_collection_name || acc.selected_collection_url;
+        this.selectedSource = "caldav";
+        // Closing the local editor avoids cross-source confusion.
+        this.closeIcsFile();
+        await this.refreshCaldavEvents();
+      },
+
+      closeCaldavCollection() {
+        this.selectedCaldavAccountId = "";
+        this.selectedCaldavCollectionLabel = "";
+        this.selectedCaldavCollectionUrl = "";
+        this.selectedCaldavHref = "";
+        this.caldavEvents = [];
+        if (this.selectedSource === "caldav") {
+          this.selectedSource = "local";
+          this.closeIcsFile();
+        }
+      },
+
+      async refreshCaldavEvents() {
+        if (!this.caldavAccount) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "list_caldav_events",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          if (result?.ok) {
+            this.caldavEvents = Array.isArray(result.events) ? result.events : [];
+          } else {
+            this.error = result?.error || "Failed to list CalDAV events";
+            this.caldavEvents = [];
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to list CalDAV events", error);
+          this.error = String(error?.message || error || "Failed to list CalDAV events");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      newCaldavEvent() {
+        if (!this.caldavAccount) return;
+        if (!this.selectedCaldavAccountId) this.selectedCaldavAccountId = String(this.caldavAccount.id || "singleton");
+        this.selectedSource = "caldav";
+        this.selectedFileName = `caldav:${this.selectedCaldavCollectionLabel || "new event"}`;
+        this.selectedFile = { source: "caldav" };
+        this.componentKind = "event";
+        this.eventForm = this.defaultEventForm();
+        this.todoForm = this.defaultTodoForm ? this.defaultTodoForm() : {};
+        this.originalEventUid = "";
+        this.originalTodoUid = "";
+        this.selectedCaldavHref = "";
+        if (this.visible) window.requestAnimationFrame(() => this.syncPanelPlacement());
+      },
+
+      async openCaldavEvent(ev) {
+        if (!ev) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          this.selectedSource = "caldav";
+          this.selectedFileName = `caldav:${ev.summary || ev.uid || "event"}`;
+          this.selectedFile = { source: "caldav", href: ev.href };
+          this.selectedCaldavHref = ev.href || "";
+          this.componentKind = ev.component_kind === "todo" ? "todo" : "event";
+          // Seed the form from summary fields; full ICS round-trip is left to the
+          // user editing in the structured form.  The save path will rebuild the
+          // VEVENT/VTODO from the form values.
+          if (this.componentKind === "event") {
+            this.eventForm = this.normalizeEventForm({
+              uid: ev.uid || "",
+              summary: ev.summary || "",
+              start_date: "",
+              start_time: "",
+              end_date: "",
+              end_time: "",
+              all_day: false,
+              rrule: ev.rrule || "",
+            });
+            this.originalEventUid = String(ev.uid || "");
+            this.todoForm = this.defaultTodoForm ? this.defaultTodoForm() : {};
+          } else {
+            this.todoForm = (this.normalizeTodoForm ? this.normalizeTodoForm({ uid: ev.uid || "", summary: ev.summary || "" }) : { uid: ev.uid || "", summary: ev.summary || "" });
+            this.originalTodoUid = String(ev.uid || "");
+            this.eventForm = this.defaultEventForm();
+          }
+          if (this.visible) window.requestAnimationFrame(() => this.syncPanelPlacement());
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async saveCaldavEvent() {
+        if (!this.caldavAccount) {
+          this.error = "Configure a CalDAV account first.";
+          return;
+        }
+        const isEvent = this.componentKind !== "todo";
+        if (isEvent && !String(this.eventForm?.start_date || "").trim()) {
+          this.error = "Start date is required.";
+          return;
+        }
+        if (!isEvent && !String(this.todoForm?.summary || "").trim()) {
+          this.error = "Summary is required.";
+          return;
+        }
+        if (isEvent) this.syncRecurrenceRule();
+        this.loading = true;
+        this.error = "";
+        try {
+          const body = {
+            action: "upsert_caldav_event",
+            ctxid: this.ctxid || selectedContextId(),
+            href: this.selectedCaldavHref || "",
+          };
+          if (isEvent) body.event = this.eventForm;
+          else body.todo = this.todoForm;
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", body);
+          if (result?.ok) {
+            this.selectedCaldavHref = result.href || this.selectedCaldavHref;
+            await this.refreshCaldavEvents();
+          } else {
+            this.error = result?.error || "Failed to save CalDAV event";
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to save CalDAV event", error);
+          this.error = String(error?.message || error || "Failed to save CalDAV event");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async deleteCaldavEvent(ev) {
+        const href = ev?.href || this.selectedCaldavHref;
+        if (!this.caldavAccount || !href) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "delete_caldav_event",
+            ctxid: this.ctxid || selectedContextId(),
+            href,
+          });
+          if (result?.ok) {
+            if (this.selectedCaldavHref && this.selectedCaldavHref === href) {
+              this.selectedCaldavHref = "";
+              this.selectedFileName = "";
+              this.selectedFile = null;
+              this.eventForm = {};
+              this.todoForm = {};
+            }
+            await this.refreshCaldavEvents();
+          } else {
+            this.error = result?.error || "Failed to delete CalDAV event";
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to delete CalDAV event", error);
+          this.error = String(error?.message || error || "Failed to delete CalDAV event");
+        } finally {
+          this.loading = false;
+        }
+      },
+    });
+  }
+
+  if (window.Alpine) registerAgentCalendarStore();
+  document.addEventListener("alpine:init", registerAgentCalendarStore, { once: true });
+</script>
