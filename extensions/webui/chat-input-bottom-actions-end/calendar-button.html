@@ -4,7 +4,7 @@
     display: inline-flex;
     align-items: stretch;
     --a0-calendar-panel-margin: clamp(0.5rem, 1.5vw, 1.25rem);
-    --a0-calendar-panel-width: min(1120px, calc(100vw - 2rem));
+    --a0-calendar-panel-width: calc(100vw - 1rem);
     --a0-calendar-panel-max-height: min(930px, 90vh);
     --a0-calendar-tab-offset-left: 0px;
   }
@@ -45,7 +45,7 @@
     right: auto;
     bottom: calc(100% - 1px);
     z-index: 10001;
-    width: var(--a0-calendar-panel-width, min(1120px, calc(100vw - 2rem)));
+    width: var(--a0-calendar-panel-width, calc(100vw - 1rem));
     max-width: calc(100vw - 1rem);
     height: var(--a0-calendar-panel-height, auto);
     max-height: var(--a0-calendar-panel-max-height, min(930px, 90vh));
@@ -1687,7 +1687,7 @@
           const panelLeft = Math.max(viewportLeft, Math.round(contentRect.left));
           const panelRight = Math.min(viewportRight, Math.round(contentRect.right));
           const availableWidth = Math.max(240, panelRight - panelLeft);
-          const panelWidth = Math.max(240, Math.min(1120, availableWidth));
+          const panelWidth = Math.max(240, availableWidth);
           const offsetLeft = Math.round((anchorRect.left || buttonRect.left) - panelLeft);
           const tabLeft = Math.max(0, Math.min(panelWidth - buttonRect.width, Math.round(buttonRect.left - panelLeft)));
 
