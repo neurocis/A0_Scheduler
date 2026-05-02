@@ -81,6 +81,68 @@
     font-size: 0.86rem;
   }
 
+  .a0-agent-calendar-conflict-button {
+    border-color: rgba(255, 177, 66, 0.55) !important;
+    color: #ffcf78 !important;
+  }
+
+  .a0-agent-calendar-conflict-button:not(:disabled) {
+    box-shadow: 0 0 0 1px rgba(255, 177, 66, 0.18);
+  }
+
+  .a0-agent-calendar-conflict-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.4rem;
+    height: 1.4rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: rgba(255, 177, 66, 0.18);
+    color: #ffcf78;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .a0-agent-calendar-conflicts-list {
+    display: grid;
+    gap: 0.7rem;
+    margin-top: 0.8rem;
+  }
+
+  .a0-agent-calendar-conflict-card {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 177, 66, 0.35);
+    border-radius: 0.65rem;
+    background: rgba(255, 177, 66, 0.06);
+  }
+
+  .a0-agent-calendar-conflict-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .a0-agent-calendar-conflict-meta {
+    display: grid;
+    gap: 0.18rem;
+    font-size: 0.82rem;
+    opacity: 0.82;
+    overflow-wrap: anywhere;
+  }
+
+  .a0-agent-calendar-conflict-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: center;
+  }
+
+
   .a0-agent-calendar-content-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -903,6 +965,16 @@
                         x-show="$store.agentCalendar.caldavSyncStatusText()"
                         x-text="$store.agentCalendar.caldavSyncStatusText()"></span>
                   <button type="button"
+                          class="a0-agent-calendar-small-button a0-agent-calendar-conflict-button"
+                          x-show="$store.agentCalendar.conflictCount() > 0"
+                          :disabled="$store.agentCalendar.loading"
+                          title="Resolve sync conflicts"
+                          aria-label="Resolve sync conflicts"
+                          @click="$store.agentCalendar.openConflictResolutionWindow()">
+                    Resolve
+                    <span class="a0-agent-calendar-conflict-count" x-text="$store.agentCalendar.conflictCount()"></span>
+                  </button>
+                  <button type="button"
                           class="a0-agent-calendar-small-button a0-agent-calendar-icon-button"
                           :disabled="$store.agentCalendar.loading || !$store.agentCalendar.caldavAccount || !$store.agentCalendar.caldavAccount.selected_collection_url"
                           title="Sync"
@@ -964,6 +1036,61 @@
         </div>
       </template>
     </div>
+
+    <template x-teleport="body">
+      <div x-cloak
+           x-show="$store.agentCalendar && $store.agentCalendar.conflictWindowOpen"
+           class="a0-agent-calendar-editor-overlay"
+           role="presentation"
+           @click.self="$store.agentCalendar.closeConflictResolutionWindow()">
+        <div class="a0-agent-calendar-editor"
+             role="dialog"
+             aria-modal="true"
+             aria-label="Schedule sync conflict resolution"
+             @click.stop>
+          <div class="a0-agent-calendar-editor-toolbar">
+            <div class="a0-agent-calendar-editor-title">
+              <span>Resolve Schedule Sync Conflicts</span>
+              <span class="a0-agent-calendar-editor-subtitle" x-text="$store.agentCalendar.conflictWindowSubtitle()"></span>
+            </div>
+            <div class="a0-agent-calendar-actions">
+              <button type="button" class="a0-agent-calendar-small-button" :disabled="$store.agentCalendar.loading" @click="$store.agentCalendar.refreshCaldavSyncStatus()">Refresh</button>
+              <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.closeConflictResolutionWindow()">Close</button>
+            </div>
+          </div>
+          <div class="a0-agent-calendar-editor-grid a0-agent-calendar-editor-grid-single">
+            <div>
+              <p class="a0-agent-calendar-muted">Choose how to resolve each conflicted item. “Keep local” uploads your local copy to CalDAV. “Keep remote” replaces the local file with the saved remote conflict copy. “Duplicate both” keeps your local item and imports the remote copy with a new UID. “Clear flag” only clears the ledger conflict marker.</p>
+              <template x-if="$store.agentCalendar.conflicts().length === 0">
+                <div class="a0-agent-calendar-muted">No unresolved sync conflicts.</div>
+              </template>
+              <div class="a0-agent-calendar-conflicts-list">
+                <template x-for="conflict in $store.agentCalendar.conflicts()" :key="conflict.key || conflict.uid">
+                  <div class="a0-agent-calendar-conflict-card">
+                    <div class="a0-agent-calendar-conflict-title">
+                      <span aria-hidden="true">⚠️</span>
+                      <span x-text="$store.agentCalendar.conflictTitle(conflict)"></span>
+                    </div>
+                    <div class="a0-agent-calendar-conflict-meta">
+                      <div><strong>Reason:</strong> <span x-text="conflict.reason || conflict.conflict_type || 'Unresolved conflict'"></span></div>
+                      <div><strong>Local:</strong> <span x-text="conflict.local_path || (conflict.local_exists ? 'existing local file' : 'missing')"></span></div>
+                      <div><strong>Remote copy:</strong> <span x-text="conflict.conflict_file || (conflict.remote_copy_exists ? 'available' : 'not saved')"></span></div>
+                      <div><strong>UID:</strong> <span x-text="conflict.uid || conflict.key || ''"></span></div>
+                    </div>
+                    <div class="a0-agent-calendar-conflict-actions">
+                      <button type="button" class="a0-agent-calendar-small-button" :disabled="$store.agentCalendar.loading || !conflict.local_exists" @click="$store.agentCalendar.resolveSyncConflict(conflict, 'keep_local')">Keep local</button>
+                      <button type="button" class="a0-agent-calendar-small-button" :disabled="$store.agentCalendar.loading || !conflict.remote_copy_exists" @click="$store.agentCalendar.resolveSyncConflict(conflict, 'keep_remote')">Keep remote</button>
+                      <button type="button" class="a0-agent-calendar-small-button" :disabled="$store.agentCalendar.loading || !conflict.remote_copy_exists" @click="$store.agentCalendar.resolveSyncConflict(conflict, 'duplicate_both')">Duplicate both</button>
+                      <button type="button" class="a0-agent-calendar-small-button" :disabled="$store.agentCalendar.loading" @click="$store.agentCalendar.resolveSyncConflict(conflict, 'clear')">Clear flag</button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <template x-teleport="body">
       <div x-cloak
@@ -1264,6 +1391,7 @@
       error: "",
       lastSyncSummary: "",
       caldavSyncStatus: null,
+      conflictWindowOpen: false,
       ctxid: "",
       agentName: "",
       calendarDir: "",
@@ -2456,6 +2584,71 @@
           this.error = String(error?.message || error || "Failed to refresh CalDAV collections");
         } finally {
           this.collectionRefreshInflight = false;
+        }
+      },
+
+      conflicts() {
+        const status = this.caldavSyncStatus || {};
+        return Array.isArray(status.conflicts) ? status.conflicts : [];
+      },
+
+      conflictCount() {
+        const listed = this.conflicts().length;
+        const reported = Number(this.caldavSyncStatus?.conflict_count || 0);
+        return Math.max(listed, Number.isFinite(reported) ? reported : 0);
+      },
+
+      conflictTitle(conflict) {
+        const summary = String(conflict?.summary || "").trim();
+        const kind = String(conflict?.component_kind || "item").trim().toLowerCase() || "item";
+        const file = String(conflict?.local_path || "").trim();
+        if (summary) return `${summary} (${kind})`;
+        if (file) return `${file} (${kind})`;
+        return `${String(conflict?.uid || conflict?.key || "Calendar item")} (${kind})`;
+      },
+
+      conflictWindowSubtitle() {
+        const count = this.conflictCount();
+        return count ? `${count} unresolved item${count === 1 ? "" : "s"}` : "No unresolved conflicts";
+      },
+
+      async openConflictResolutionWindow() {
+        this.conflictWindowOpen = true;
+        await this.refreshCaldavSyncStatus();
+      },
+
+      closeConflictResolutionWindow() {
+        this.conflictWindowOpen = false;
+      },
+
+      async resolveSyncConflict(conflict, strategy) {
+        const uid = String(conflict?.uid || "").trim();
+        const componentKind = String(conflict?.component_kind || conflict?.kind || "").trim();
+        if (!uid) {
+          this.error = "Conflict is missing a UID and cannot be resolved from the UI.";
+          return;
+        }
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "resolve_caldav_sync_conflict",
+            ctxid: this.ctxid || selectedContextId(),
+            uid,
+            component_kind: componentKind,
+            strategy,
+          });
+          if (result?.ok === false) throw new Error(result.error || "Conflict resolution failed.");
+          this.caldavSyncStatus = result?.sync_status || result?.caldav_sync_status || this.caldavSyncStatus || null;
+          await this.refresh();
+          await this.refreshCaldavSyncStatus();
+          if (this.conflictCount() === 0) this.conflictWindowOpen = false;
+          this.lastSyncSummary = `Resolved conflict with ${String(strategy || "selected strategy").replace(/_/g, " ")}.`;
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to resolve CalDAV sync conflict", error);
+          this.error = String(error?.message || error || "Failed to resolve sync conflict");
+        } finally {
+          this.loading = false;
         }
       },
 

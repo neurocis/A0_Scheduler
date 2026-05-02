@@ -805,6 +805,49 @@ def sync_context(ctxid: str, account_id: str | None = None, *, force: bool = Fal
     return payload
 
 
+def _conflict_copy_relative_path(calendar_dir: Path, entry: dict[str, Any]) -> str:
+    copy = _find_conflict_remote_copy(calendar_dir, entry)
+    if copy is None:
+        return ""
+    try:
+        return copy.relative_to(calendar_dir).as_posix()
+    except ValueError:
+        return copy.name
+
+
+def _sync_conflict_details(calendar_dir: Path, objects: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return UI-safe details for unresolved sync conflicts."""
+    conflicts: list[dict[str, Any]] = []
+    for key, raw_entry in sorted(objects.items(), key=lambda item: str(item[0])):
+        if not isinstance(raw_entry, dict) or not raw_entry.get("conflict"):
+            continue
+        entry = dict(raw_entry)
+        local_path = str(entry.get("local_path") or "")
+        local_exists = bool(local_path and (calendar_dir / local_path).exists())
+        conflict_copy = _conflict_copy_relative_path(calendar_dir, entry)
+        conflict_type = str(entry.get("conflict_type") or "").strip()
+        reason_map = {
+            "local_and_remote_changed": "Local and remote both changed",
+            "local_changed_remote_deleted": "Local changed and remote was deleted",
+            "local_deleted_remote_changed": "Local was deleted and remote changed",
+        }
+        conflicts.append({
+            "key": str(key),
+            "uid": str(entry.get("uid") or ""),
+            "component_kind": _kind_label(str(entry.get("component_kind") or entry.get("kind") or "event")),
+            "summary": str(entry.get("summary") or entry.get("last_summary") or ""),
+            "local_path": local_path,
+            "local_exists": local_exists,
+            "remote_href": str(entry.get("remote_href") or ""),
+            "remote_etag": str(entry.get("remote_etag") or ""),
+            "conflict_type": conflict_type,
+            "reason": reason_map.get(conflict_type, conflict_type.replace("_", " ").strip() or "Unresolved sync conflict"),
+            "conflict_file": conflict_copy,
+            "remote_copy_exists": bool(conflict_copy),
+            "updated_at": str(entry.get("updated_at") or ""),
+        })
+    return conflicts
+
 def get_status(ctxid: str, account_id: str | None = None) -> dict[str, Any]:
     cal = _calendar_helpers()
     cd = _caldav_helpers()
@@ -818,7 +861,9 @@ def get_status(ctxid: str, account_id: str | None = None) -> dict[str, Any]:
     objects = state.get("objects") if isinstance(state.get("objects"), dict) else {}
     last_success = _parse_iso(state.get("last_success_at"))
     age_seconds = int((_now() - last_success).total_seconds()) if last_success else None
-    conflict_count = sum(1 for entry in objects.values() if isinstance(entry, dict) and entry.get("conflict"))
+    calendar_dir = cal.context_calendar_dir(clean_ctxid, create=True)
+    conflicts = _sync_conflict_details(calendar_dir, objects)
+    conflict_count = len(conflicts)
     tombstone_count = sum(1 for entry in objects.values() if isinstance(entry, dict) and entry.get("tombstone"))
     lock_exists = _lock_path(clean_ctxid).exists()
     last_error = str(state.get("last_error") or "")
@@ -848,6 +893,7 @@ def get_status(ctxid: str, account_id: str | None = None) -> dict[str, Any]:
         "stale": bool(age_seconds is None or age_seconds > STALE_SYNC_SECONDS),
         "syncing": lock_exists,
         "conflict_count": conflict_count,
+        "conflicts": conflicts,
         "tombstone_count": tombstone_count,
         "tracked_count": len(objects),
         "last_error": last_error,
