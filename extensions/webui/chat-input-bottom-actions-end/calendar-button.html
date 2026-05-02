@@ -316,7 +316,9 @@
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    padding: clamp(1rem, 3vw, 2.25rem);
+    /* Keep vertical breathing room, but remove horizontal padding so the
+       editor can truly occupy the full viewport width. */
+    padding: clamp(1rem, 3vw, 2.25rem) 0;
     background: rgba(0, 0, 0, 0.58);
     backdrop-filter: blur(2px);
   }
