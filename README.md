@@ -1,6 +1,6 @@
 # A0 Scheduler
 
-A0 Scheduler is an Agent Zero plugin that provides the CalDAVnTasks calendar/task functionality extracted from A0 Superordinates.
+A0 Scheduler is an Agent Zero plugin that provides Scheduler calendar/task functionality extracted from A0 Superordinates.
 
 ## Runtime plugin name
 
