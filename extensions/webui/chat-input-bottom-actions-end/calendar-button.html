@@ -297,17 +297,20 @@
   .a0-agent-calendar-file-json-preview {
     grid-column: 1 / -1;
     grid-row: 2;
-    display: block;
+    display: -webkit-box;
     min-width: 0;
     max-width: 100%;
     font-weight: 400;
     line-height: 1.16;
     font-size: 0.82rem;
     opacity: 0.78;
-    white-space: normal;
+    white-space: pre-line;
     word-break: normal;
-    overflow-wrap: normal;
+    overflow-wrap: anywhere;
     hyphens: none;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
   }
 
   .a0-agent-calendar-recurrence-icon {
@@ -1453,8 +1456,18 @@
         );
       },
 
+      limitPromptPreviewLines(text, maxLines = 5) {
+        const value = String(text || "");
+        const lines = value.split(/\r\n|\r|\n/);
+        const limit = Math.max(0, Number(maxLines || 0));
+        if (!limit || lines.length <= limit) return value;
+        const kept = lines.slice(0, limit);
+        kept[kept.length - 1] = `${String(kept[kept.length - 1] || "").trimEnd()}...`;
+        return kept.join("\n");
+      },
+
       fileJsonPromptDisplay(file) {
-        return this.truncateLongTokens(this.fileJsonPromptText(file));
+        return this.truncateLongTokens(this.limitPromptPreviewLines(this.fileJsonPromptText(file), 5));
       },
 
       fileJsonPromptPreview(file) {
