@@ -339,6 +339,15 @@
     text-overflow: ellipsis;
   }
 
+
+  .a0-agent-calendar-caldav-account-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    flex-wrap: nowrap;
+  }
+
   .a0-agent-calendar-recurrence-icon {
     flex: 0 0 auto;
     opacity: 0.82;
@@ -1068,9 +1077,19 @@
               </div>
               <input type="text" placeholder="Username" autocomplete="username" x-model="$store.agentCalendar.newCaldav.username">
               <input type="password" placeholder="Password / App password" autocomplete="new-password" x-model="$store.agentCalendar.newCaldav.password" @keydown.enter="$store.agentCalendar.addCaldavAccount()">
-              <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.addCaldavAccount()">
-                Save CalDAV account
-              </button>
+              <div class="a0-agent-calendar-caldav-account-actions">
+                <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.addCaldavAccount()">
+                  Save
+                </button>
+                <button type="button"
+                        class="a0-agent-calendar-small-button"
+                        x-show="$store.agentCalendar.caldavAccount"
+                        :disabled="$store.agentCalendar.loading"
+                        title="Remove the CalDAV account association but keep local .ics files"
+                        @click="$store.agentCalendar.removeCaldavAccount()">
+                  Remove
+                </button>
+              </div>
             </div>
             <div class="a0-agent-calendar-row-meta" x-show="$store.agentCalendar.lastSyncSummary" x-text="$store.agentCalendar.lastSyncSummary"></div>
           </div>
@@ -2877,7 +2896,7 @@
 
       async removeCaldavAccount() {
         if (!this.caldavAccount) return;
-        if (!window.confirm("Remove this CalDAV account?")) return;
+        if (!window.confirm("Remove this CalDAV account association? Local .ics files will be kept and the schedule will become standalone.")) return;
         this.loading = true;
         this.error = "";
         try {
