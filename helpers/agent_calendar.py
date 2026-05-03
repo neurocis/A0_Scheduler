@@ -710,14 +710,50 @@ def _a0_prompt_text_value(value: Any) -> str:
     return ""
 
 
+
+def _limit_prompt_display_lines(text: str, max_lines: int = 5) -> str:
+    """Return text capped to max_lines, appending ellipsis on the final line."""
+    value = str(text or "")
+    if max_lines <= 0:
+        return ""
+    lines = value.splitlines()
+    if len(lines) <= max_lines:
+        return value
+    limited = lines[:max_lines]
+    limited[-1] = limited[-1].rstrip() + "..."
+    return "\n".join(limited)
+
+
+def _format_a0_prompt_display(start: str, end: str = "") -> str:
+    """Format sidecar prompt text for compact Scheduler card display.
+
+    If an end prompt exists, show explicit Start/End labels so both prompt
+    boundaries are visible. The combined text is capped to five text lines, with
+    an ellipsis added to line five when truncation is required.
+    """
+    clean_start = str(start or "")
+    clean_end = str(end or "")
+    if clean_end:
+        return _limit_prompt_display_lines(f"@Start: {clean_start}\n@End: {clean_end}", 5)
+    return _limit_prompt_display_lines(clean_start, 5)
+
+
 def a0_prompt_start_from_sidecar(path: Path) -> str:
-    """Return full sibling sidecar A0 prompt start text for UI display.
+    """Return formatted sibling sidecar A0 prompt text for UI display.
 
     Current sidecars may use either ``a0_prompt.start`` or the plural
     ``a0_prompts.start`` shape. Some prompt containers may also store the text
     under ``start.value``. Prefer the singular key when both are present, but
     fall back to the plural key used by existing generated JSON sidecars. Only
-    the prompt text value is returned; enclosing dict containers are ignored.
+    prompt text values are returned; enclosing dict containers are ignored.
+
+    When an ``end`` prompt is present, display both boundaries as::
+
+        @Start: <start text>
+        @End: <end text>
+
+    The resulting display text is capped to five lines, adding ``...`` at the
+    end of line five when truncation is needed.
     """
     sidecar = path.with_suffix(".json")
     if not sidecar.is_file():
@@ -734,8 +770,9 @@ def a0_prompt_start_from_sidecar(path: Path) -> str:
         if not isinstance(a0_prompt, dict):
             continue
         start = _a0_prompt_text_value(a0_prompt.get("start"))
-        if start:
-            return start
+        end = _a0_prompt_text_value(a0_prompt.get("end"))
+        if start or end:
+            return _format_a0_prompt_display(start, end)
     return ""
 
 
