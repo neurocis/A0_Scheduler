@@ -297,7 +297,7 @@
   .a0-agent-calendar-file-json-preview {
     grid-column: 1 / -1;
     grid-row: 2;
-    display: block;
+    display: -webkit-box;
     min-width: 0;
     max-width: 100%;
     font-weight: 400;
@@ -309,7 +309,8 @@
     overflow-wrap: anywhere;
     hyphens: none;
     overflow: hidden;
-    max-height: calc(5 * 1.16em);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
   }
 
   .a0-agent-calendar-recurrence-icon {
@@ -324,15 +325,6 @@
     bottom: 0.45rem;
     justify-content: flex-end;
     flex-wrap: nowrap;
-    z-index: 2;
-  }
-
-  .a0-agent-calendar-file-actions-flow-spacer {
-    float: right;
-    clear: right;
-    width: 4.35rem;
-    height: 2.05rem;
-    pointer-events: none;
   }
 
   .a0-agent-calendar-file-icon-button {
@@ -927,7 +919,7 @@
                         </template>
                       </div>
                       <span class="a0-agent-calendar-file-summary" x-text="$store.agentCalendar.fileSummaryDisplay(file)"></span>
-                      <span class="a0-agent-calendar-file-json-preview" x-show="$store.agentCalendar.fileJsonPromptText(file)" x-init="$el.lastChild.textContent = $store.agentCalendar.fileJsonPromptDisplay(file)" x-effect="$el.lastChild.textContent = $store.agentCalendar.fileJsonPromptDisplay(file)"><span class="a0-agent-calendar-file-actions-flow-spacer" aria-hidden="true"></span><span></span></span>
+                      <span class="a0-agent-calendar-file-json-preview" x-show="$store.agentCalendar.fileJsonPromptText(file)" x-text="$store.agentCalendar.fileJsonPromptDisplay(file)"></span>
                     </div>
                   </div>
                   <div class="a0-agent-calendar-actions a0-agent-calendar-file-actions">
