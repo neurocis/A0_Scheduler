@@ -233,6 +233,7 @@
     row-gap: 0.28rem;
     align-items: start;
     min-width: 0;
+    width: 100%;
   }
 
   .a0-agent-calendar-file-date-line {
@@ -279,13 +280,15 @@
   .a0-agent-calendar-file-summary {
     grid-column: 1;
     grid-row: 1;
-    justify-self: start;
+    justify-self: stretch;
     display: block;
     min-width: 0;
     max-width: 100%;
     font-weight: 700;
     line-height: 1.16;
-    white-space: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     word-break: normal;
     overflow-wrap: normal;
     hyphens: none;
