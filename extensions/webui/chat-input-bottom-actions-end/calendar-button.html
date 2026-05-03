@@ -297,7 +297,7 @@
   .a0-agent-calendar-file-json-preview {
     grid-column: 1 / -1;
     grid-row: 2;
-    display: -webkit-box;
+    display: block;
     min-width: 0;
     max-width: 100%;
     font-weight: 400;
@@ -309,8 +309,34 @@
     overflow-wrap: anywhere;
     hyphens: none;
     overflow: hidden;
+  }
+
+  .a0-agent-calendar-file-json-preview-start,
+  .a0-agent-calendar-file-json-preview-full {
+    display: -webkit-box;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
     -webkit-box-orient: vertical;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  .a0-agent-calendar-file-json-preview-start {
+    -webkit-line-clamp: 4;
+  }
+
+  .a0-agent-calendar-file-json-preview-full {
     -webkit-line-clamp: 5;
+  }
+
+  .a0-agent-calendar-file-json-preview-end {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .a0-agent-calendar-recurrence-icon {
@@ -919,7 +945,17 @@
                         </template>
                       </div>
                       <span class="a0-agent-calendar-file-summary" x-text="$store.agentCalendar.fileSummaryDisplay(file)"></span>
-                      <span class="a0-agent-calendar-file-json-preview" x-show="$store.agentCalendar.fileJsonPromptText(file)" x-text="$store.agentCalendar.fileJsonPromptDisplay(file)"></span>
+                      <span class="a0-agent-calendar-file-json-preview" x-show="$store.agentCalendar.fileJsonPromptText(file)">
+                        <template x-if="$store.agentCalendar.fileJsonPromptParts(file).hasEnd">
+                          <span>
+                            <span class="a0-agent-calendar-file-json-preview-start" x-text="$store.agentCalendar.fileJsonPromptParts(file).start"></span>
+                            <span class="a0-agent-calendar-file-json-preview-end" x-text="$store.agentCalendar.fileJsonPromptParts(file).end"></span>
+                          </span>
+                        </template>
+                        <template x-if="!$store.agentCalendar.fileJsonPromptParts(file).hasEnd">
+                          <span class="a0-agent-calendar-file-json-preview-full" x-text="$store.agentCalendar.fileJsonPromptDisplay(file)"></span>
+                        </template>
+                      </span>
                     </div>
                   </div>
                   <div class="a0-agent-calendar-actions a0-agent-calendar-file-actions">
@@ -1476,6 +1512,26 @@
 
       fileJsonPromptDisplay(file) {
         return this.truncateLongTokens(this.limitPromptPreviewLines(this.fileJsonPromptText(file), 5));
+      },
+
+      fileJsonPromptParts(file) {
+        const display = this.fileJsonPromptDisplay(file);
+        const lines = String(display || "").split(/\r\n|\r|\n/);
+        const endIndex = lines.findIndex((line) => String(line || "").trimStart().startsWith("@End:"));
+        if (endIndex < 0) {
+          return { hasEnd: false, start: display, end: "" };
+        }
+        const startLines = lines.slice(0, endIndex);
+        const endLine = lines[endIndex] || "@End:";
+        if (startLines.length > 4) {
+          startLines.length = 4;
+          startLines[3] = `${String(startLines[3] || "").trimEnd()}...`;
+        }
+        return {
+          hasEnd: true,
+          start: startLines.join("\n"),
+          end: endLine,
+        };
       },
 
       fileJsonPromptPreview(file) {
