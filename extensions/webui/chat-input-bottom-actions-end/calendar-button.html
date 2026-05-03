@@ -1462,10 +1462,12 @@
         const limit = Math.max(0, Number(maxLines || 0));
         if (!limit || lines.length <= limit) return value;
         const endIndex = lines.findIndex((line) => String(line || "").trimStart().startsWith("@End:"));
-        if (limit >= 2 && endIndex >= limit) {
-          const kept = lines.slice(0, limit - 1);
-          kept[kept.length - 1] = `${String(kept[kept.length - 1] || "").trimEnd()}...`;
-          return [...kept, lines[endIndex]].join("\n");
+        if (limit >= 2 && endIndex >= limit - 1) {
+          const keptStart = lines.slice(0, limit - 1);
+          if (endIndex > limit - 1) {
+            keptStart[keptStart.length - 1] = `${String(keptStart[keptStart.length - 1] || "").trimEnd()}...`;
+          }
+          return [...keptStart, lines[endIndex]].join("\n");
         }
         const kept = lines.slice(0, limit);
         kept[kept.length - 1] = `${String(kept[kept.length - 1] || "").trimEnd()}...`;

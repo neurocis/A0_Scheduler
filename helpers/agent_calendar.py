@@ -727,18 +727,18 @@ def _limit_prompt_display_lines(text: str, max_lines: int = 5) -> str:
 def _format_a0_prompt_display(start: str, end: str = "") -> str:
     """Format sidecar prompt text for compact Scheduler card display.
 
-    If an end prompt exists, reserve the fifth preview line for ``@End`` so the
-    closing prompt boundary is always visible. The start prompt may use at most
-    four lines and is ellipsis-truncated on line four when necessary. The total
-    formatted preview never exceeds five lines.
+    If an end prompt exists, line five is reserved for ``@End``.  ``@Start`` may
+    use lines one through four; if the start prompt would need more than those
+    four lines, line four is always suffixed with ``...`` and ``@End`` remains
+    visible on the final line.  The backend display string never exceeds five
+    lines.
     """
     clean_start = str(start or "")
     clean_end = str(end or "")
     if clean_end:
         start_lines = f"@Start: {clean_start}".splitlines() or ["@Start: "]
-        start_truncated = len(start_lines) > 4
         limited_start = start_lines[:4]
-        if start_truncated:
+        if len(start_lines) > len(limited_start):
             limited_start[-1] = limited_start[-1].rstrip() + "..."
         end_lines = clean_end.splitlines() or [""]
         end_text = end_lines[0]
