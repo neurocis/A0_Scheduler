@@ -219,13 +219,16 @@
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 0.45rem;
+    grid-template-rows: auto auto;
+    gap: 0.28rem;
     align-items: start;
     min-height: 0;
-    padding: 0.58rem 0.62rem 0.52rem;
+    padding: 0.46rem 0.54rem 0.46rem;
   }
 
   .a0-agent-calendar-file-card .a0-agent-calendar-row-main {
+    grid-column: 1;
+    grid-row: 1;
     min-width: 0;
     padding-right: 0;
   }
@@ -234,7 +237,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) max-content;
     column-gap: 0.55rem;
-    row-gap: 0.28rem;
+    row-gap: 0.18rem;
     align-items: start;
     min-width: 0;
     width: 100%;
@@ -359,20 +362,22 @@
   }
 
   .a0-agent-calendar-file-actions {
+    grid-column: 1;
+    grid-row: 2;
     justify-self: end;
     align-self: end;
     justify-content: flex-end;
     flex-wrap: nowrap;
-    margin-top: -0.05rem;
+    margin-top: 0;
   }
 
   .a0-agent-calendar-file-icon-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.8rem;
-    min-width: 1.8rem;
-    height: 1.8rem;
+    width: 1.7rem;
+    min-width: 1.7rem;
+    height: 1.7rem;
     padding: 0 !important;
     border-radius: 999px;
     font-size: 0.98rem;
