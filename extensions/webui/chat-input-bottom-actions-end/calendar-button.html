@@ -234,9 +234,11 @@
   }
 
   .a0-agent-calendar-file-headline {
+    position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
-    column-gap: 0.55rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 0;
     row-gap: 0;
     align-items: baseline;
     min-width: 0;
@@ -244,17 +246,18 @@
   }
 
   .a0-agent-calendar-file-date-line {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: end;
+    position: absolute;
+    top: 0;
+    right: 0;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 0.28rem;
     min-width: 0;
-    line-height: 1.15;
+    line-height: 1.16;
     text-align: right;
     white-space: nowrap;
+    pointer-events: none;
   }
 
   .a0-agent-calendar-file-kind-icon {
@@ -291,6 +294,7 @@
     display: block;
     min-width: 0;
     max-width: 100%;
+    padding-right: 7.5rem;
     font-weight: 700;
     line-height: 1.16;
     white-space: nowrap;
