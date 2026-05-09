@@ -186,7 +186,13 @@ def derive_has_calendar(ctxid: str) -> bool:
     if local_ics_file_paths(clean):
         return True
     try:
-        from . import agent_caldav  # late import to avoid circular dep
+        from . import agent_account  # late import to avoid circular dep
+        if agent_account.has_active_account_source(clean):
+            return True
+    except Exception:
+        pass
+    try:
+        from . import agent_caldav  # backward-compatible legacy fallback
         if agent_caldav.has_active_caldav_source(clean):
             return True
     except Exception:
