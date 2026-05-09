@@ -104,6 +104,17 @@ from usr.plugins.a0_scheduler.helpers.agent_caldav import (
     test_caldav_account,
     upsert_caldav_event,
 )
+from usr.plugins.a0_scheduler.helpers.agent_account import (
+    add_account,
+    get_account,
+    get_account_sync_status,
+    list_account_calendars,
+    remove_account,
+    select_account_calendar,
+    sync_account,
+    test_account,
+)
+
 from usr.plugins.a0_scheduler.helpers.agent_exchange import (
     add_exchange_account,
     get_exchange_account,
@@ -129,7 +140,15 @@ class AgentCalendar(ApiHandler):
         try:
             # ----- Calendar stack listing -----
             if action == "list":
-                return list_calendar_stack(ctxid)
+                payload = list_calendar_stack(ctxid)
+                account = get_account(ctxid)
+                payload["account"] = account
+                payload["accounts"] = [account] if account else []
+                try:
+                    payload["account_sync_status"] = get_account_sync_status(ctxid).get("sync_status")
+                except Exception:
+                    pass
+                return payload
 
             # ----- Local .ics file lifecycle -----
             if action == "create_ics":
@@ -194,6 +213,92 @@ class AgentCalendar(ApiHandler):
                     filename=str(input.get("filename") or input.get("relative_path") or ""),
                     uid=str(input.get("uid") or ""),
                 )
+
+
+            # ----- Unified auto-detected account lifecycle -----
+            if action == "get_account":
+                payload = list_calendar_stack(ctxid)
+                account = get_account(ctxid)
+                payload["account"] = account
+                payload["accounts"] = [account] if account else []
+                return payload
+
+            if action in {"set_account", "add_account"}:
+                account = add_account(
+                    ctxid=ctxid,
+                    label=str(input.get("label") or ""),
+                    server_url=str(input.get("server_url") or input.get("server") or input.get("url") or ""),
+                    username=str(input.get("username") or ""),
+                    password=str(input.get("password") or ""),
+                    webui_calendar_url=str(
+                        input.get("webui_calendar_url")
+                        if input.get("webui_calendar_url") is not None
+                        else input.get("webuiCalendarUrl") or ""
+                    ),
+                )
+                payload = list_calendar_stack(ctxid)
+                payload["account"] = account
+                payload["accounts"] = [account] if account else []
+                payload["added"] = account
+                payload["set"] = account
+                return payload
+
+            if action == "remove_account":
+                removed = remove_account(ctxid=ctxid)
+                payload = list_calendar_stack(ctxid)
+                payload["account"] = None
+                payload["accounts"] = []
+                payload["removed"] = removed
+                return payload
+
+            if action == "test_account":
+                result = test_account(ctxid=ctxid)
+                payload = list_calendar_stack(ctxid)
+                payload["account"] = result.get("account")
+                payload["accounts"] = [result.get("account")] if result.get("account") else []
+                payload["test"] = result
+                payload["account_calendars"] = result.get("calendars") or result.get("collections") or []
+                return payload
+
+            if action == "list_account_calendars":
+                result = list_account_calendars(ctxid=ctxid)
+                payload = list_calendar_stack(ctxid)
+                payload["account"] = result.get("account")
+                payload["accounts"] = [result.get("account")] if result.get("account") else []
+                payload["account_calendars"] = result.get("calendars") or result.get("collections") or []
+                payload["test"] = result
+                return payload
+
+            if action == "select_account_calendar":
+                selected = select_account_calendar(
+                    ctxid=ctxid,
+                    calendar_id_or_url=str(
+                        input.get("calendar_id_or_url")
+                        or input.get("calendar_id")
+                        or input.get("collection_url")
+                        or input.get("url")
+                        or input.get("id")
+                        or ""
+                    ),
+                )
+                payload = list_calendar_stack(ctxid)
+                payload["account"] = selected.get("account") or get_account(ctxid)
+                payload["selected"] = selected
+                return payload
+
+            if action == "sync_account":
+                result = sync_account(ctxid=ctxid)
+                payload = list_calendar_stack(ctxid)
+                payload["account"] = result.get("account") or get_account(ctxid)
+                payload["sync"] = result.get("sync")
+                payload["sync_status"] = result.get("sync_status")
+                payload["ok"] = bool(result.get("ok"))
+                if not result.get("ok"):
+                    payload["error"] = result.get("error") or ""
+                return payload
+
+            if action in {"get_account_sync_status", "sync_account_status"}:
+                return get_account_sync_status(ctxid=ctxid)
 
             # ----- CalDAV account lifecycle -----
             if action in {"get_caldav_account", "list_caldav_accounts"}:
