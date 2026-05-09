@@ -1106,6 +1106,87 @@
             </div>
             <div class="a0-agent-calendar-row-meta" x-show="$store.agentCalendar.lastSyncSummary" x-text="$store.agentCalendar.lastSyncSummary"></div>
           </div>
+          <!-- Exchange Account section (mirrors CalDAV) -->
+          <div class="a0-agent-calendar-section">
+            <div class="a0-agent-calendar-caldav-header-row">
+              <div class="a0-agent-calendar-caldav-title-wrap">
+                <div class="a0-agent-calendar-caldav-title">
+                  <span class="a0-agent-calendar-caldav-status"
+                        :class="$store.agentCalendar.exchangeStatusClass()"
+                        :title="$store.agentCalendar.exchangeStatusTitle()"
+                        x-text="$store.agentCalendar.exchangeStatusGlyph()"></span>
+                  <h3 class="a0-agent-calendar-section-header">Exchange Account</h3>
+                </div>
+                <div class="a0-agent-calendar-actions" style="justify-content:flex-end; align-items:center; gap:0.45rem;">
+                  <span class="a0-agent-calendar-row-meta" style="white-space: nowrap; opacity: 0.92;"
+                        x-show="$store.agentCalendar.exchangeSyncStatusText()"
+                        x-text="$store.agentCalendar.exchangeSyncStatusText()"></span>
+                  <button type="button"
+                          class="a0-agent-calendar-small-button a0-agent-calendar-icon-button"
+                          :disabled="$store.agentCalendar.loading || !$store.agentCalendar.exchangeAccount || !$store.agentCalendar.exchangeAccount.selected_calendar_id"
+                          title="Sync Exchange"
+                          aria-label="Sync Exchange"
+                          @click="$store.agentCalendar.syncExchangeIcsFiles()">
+                    <svg class="a0-agent-calendar-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"></path>
+                      <path d="M4 4v4h4"></path>
+                      <path d="M4 13a8 8 0 0 0 14.5 4.5L20 16"></path>
+                      <path d="M20 20v-4h-4"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="a0-agent-calendar-input-row a0-agent-calendar-caldav-form">
+              <div class="a0-agent-calendar-caldav-server-collection">
+                <input type="text" placeholder="Exchange server, e.g. outlook.office365.com" x-model="$store.agentCalendar.newExchange.server">
+                <select class="a0-agent-calendar-caldav-collection-select"
+                        x-model="$store.agentCalendar.selectedExchangeCalendarId"
+                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.exchangeAccount"
+                        title="Selected Exchange calendar folder for sync"
+                        @pointerdown="$store.agentCalendar.refreshExchangeCalendarsForDropdown()"
+                        @focus="$store.agentCalendar.refreshExchangeCalendarsForDropdown()"
+                        @change="$store.agentCalendar.selectExchangeCalendar($event.target.value)">
+                  <option value="" disabled>Calendar…</option>
+                  <template x-for="calendar in $store.agentCalendar.exchangeCalendars()" :key="calendar.id || calendar.name">
+                    <option :value="calendar.id" x-text="$store.agentCalendar.exchangeCalendarLabel(calendar)"></option>
+                  </template>
+                </select>
+                <button type="button"
+                        class="a0-agent-calendar-small-button a0-agent-calendar-icon-button"
+                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.exchangeAccount"
+                        title="Refresh Exchange calendars"
+                        aria-label="Refresh Exchange calendars"
+                        @click="$store.agentCalendar.listExchangeCalendars()">
+                  ↻
+                </button>
+              </div>
+              <input type="text" placeholder="Username (email)" autocomplete="username" x-model="$store.agentCalendar.newExchange.username">
+              <input type="password" placeholder="Password" autocomplete="new-password" x-model="$store.agentCalendar.newExchange.password" @keydown.enter="$store.agentCalendar.saveExchangeAccount()">
+              <div class="a0-agent-calendar-caldav-account-actions">
+                <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.saveExchangeAccount()">
+                  Save
+                </button>
+                <button type="button"
+                        class="a0-agent-calendar-small-button"
+                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.exchangeAccount"
+                        title="Test the Exchange connection"
+                        @click="$store.agentCalendar.testExchangeAccount()">
+                  Test
+                </button>
+                <button type="button"
+                        class="a0-agent-calendar-small-button"
+                        x-show="$store.agentCalendar.exchangeAccount"
+                        :disabled="$store.agentCalendar.loading"
+                        title="Remove the Exchange account association but keep local .ics files"
+                        @click="$store.agentCalendar.removeExchangeAccount()">
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- /Exchange Account section -->
+
 
         </div>
       </template>
@@ -1489,6 +1570,14 @@
       originalTodoUid: "",
       newCaldav: { server_url: "", webui_calendar_url: "", username: "", password: "" },
       editingCaldavAccount: false,
+      // Exchange state (mirrors the CalDAV fields)
+      exchangeAccount: null,
+      exchangeAccounts: [],
+      exchangeSyncStatus: null,
+      selectedExchangeCalendarId: "",
+      selectedExchangeCalendarLabel: "",
+      newExchange: { server: "outlook.office365.com", username: "", password: "" },
+      editingExchangeAccount: false,
       calendarTabWidth: "7rem",
       calendarHostEl: null,
       calendarOutputEl: null,
@@ -3055,6 +3144,334 @@
           this.closeIcsFile();
         }
       },
+      // -----------------------------------------------------------------
+      // Exchange (EWS) account: methods that mirror the CalDAV ones above.
+      // -----------------------------------------------------------------
+      _emptyExchangeForm() {
+        return { server: "outlook.office365.com", username: "", password: "" };
+      },
+
+      exchangeStatusKind() {
+        const acc = this.exchangeAccount || null;
+        if (!acc || !String(acc.server || "").trim()) return "empty";
+        const status = String(acc.status || "").toLowerCase();
+        if (["ok", "connected", "success", "working"].includes(status)) return "ok";
+        if (["error", "failed", "fail", "invalid"].includes(status)) return "error";
+        return "empty";
+      },
+
+      exchangeStatusGlyph() {
+        const kind = this.exchangeStatusKind();
+        if (kind === "ok") return "✓";
+        if (kind === "error") return "✕";
+        return "O";
+      },
+
+      exchangeStatusClass() {
+        return `a0-agent-calendar-caldav-status-${this.exchangeStatusKind()}`;
+      },
+
+      exchangeStatusTitle() {
+        const kind = this.exchangeStatusKind();
+        if (kind === "ok") return "Exchange connection works";
+        if (kind === "error") return "Exchange connection failed";
+        return "Exchange connection not configured";
+      },
+
+      exchangeCalendarLabel(calendar) {
+        if (!calendar) return "";
+        return String(calendar.name || calendar.display_name || calendar.id || "").trim() || "Calendar";
+      },
+
+      exchangeCalendars() {
+        const acc = this.exchangeAccount || null;
+        if (!acc) return [];
+        const raw = Array.isArray(acc.calendars) ? acc.calendars : [];
+        const seen = new Set();
+        const calendars = [];
+        raw.forEach((calendar) => {
+          if (!calendar || typeof calendar !== "object") return;
+          const id = String(calendar.id || calendar.url || "").trim();
+          if (!id || seen.has(id)) return;
+          seen.add(id);
+          calendars.push({
+            ...calendar,
+            id,
+            url: String(calendar.url || id),
+            name: this.exchangeCalendarLabel(calendar),
+          });
+        });
+        const selectedId = String(acc.selected_calendar_id || "").trim();
+        if (selectedId && !seen.has(selectedId)) {
+          calendars.unshift({
+            id: selectedId,
+            url: selectedId,
+            name: acc.selected_calendar_name || selectedId,
+          });
+        }
+        return calendars;
+      },
+
+      _applyExchangeResult(result) {
+        if (!result) return;
+        const account =
+          result.exchange_account
+          || (Array.isArray(result.exchange_accounts) ? result.exchange_accounts[0] : null)
+          || null;
+        if ("exchange_account" in result || "exchange_accounts" in result) {
+          this.exchangeAccount = account;
+          this.exchangeAccounts = account ? [account] : [];
+        }
+        if (account?.selected_calendar_id) {
+          this.selectedExchangeCalendarId = String(account.selected_calendar_id || "");
+          this.selectedExchangeCalendarLabel = account.selected_calendar_name || account.selected_calendar_id;
+        }
+        if (result.exchange_sync_status) {
+          this.exchangeSyncStatus = result.exchange_sync_status;
+        }
+      },
+
+      async listExchangeCalendars() {
+        if (!this.exchangeAccount) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "list_exchange_calendars",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this._applyExchangeResult(result);
+          const test = result?.exchange_test;
+          if (test && test.ok === false) {
+            if (this.exchangeAccount) {
+              this.exchangeAccount = { ...this.exchangeAccount, status: "error" };
+              this.exchangeAccounts = [this.exchangeAccount];
+            }
+            this.error = test.error || "Exchange verification failed.";
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to list Exchange calendars", error);
+          this.error = String(error?.message || error || "Failed to list Exchange calendars");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async refreshExchangeCalendarsForDropdown() {
+        if (!this.exchangeAccount || this.loading) return;
+        await this.listExchangeCalendars();
+      },
+
+      exchangeSyncStatusText() {
+        const status = this.exchangeSyncStatus || null;
+        const acc = this.exchangeAccount || null;
+        if (!acc) return "";
+        if (status) {
+          const state = String(status.state || "");
+          if (state === "never") return "Not synced yet";
+          if (state === "error") return `Sync error: ${status.last_error || "last sync failed"}`;
+          if (status.last_success_at) {
+            const sec = Number(status.age_seconds || 0);
+            const fmt = (s) => {
+              if (!Number.isFinite(s)) return "recently";
+              if (s < 60) return `${Math.round(s)}s ago`;
+              if (s < 3600) return `${Math.round(s / 60)}m ago`;
+              return `${Math.round(s / 3600)}h ago`;
+            };
+            return `Last synced ${fmt(sec)}`;
+          }
+        }
+        if (acc.last_synced) return `Last synced ${acc.last_synced}`;
+        return "";
+      },
+
+      async refreshExchangeSyncStatus() {
+        if (!this.exchangeAccount || !this.exchangeAccount.selected_calendar_id) return;
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "get_exchange_sync_status",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.exchangeSyncStatus = result?.sync_status || this.exchangeSyncStatus || null;
+        } catch (error) {
+          console.warn("[Agent Calendar] Failed to refresh Exchange sync status", error);
+        }
+      },
+
+      hydrateExchangeFormFromAccount() {
+        const acc = this.exchangeAccount || null;
+        if (!acc) {
+          this.newExchange = this._emptyExchangeForm();
+          return;
+        }
+        this.newExchange = {
+          server: String(acc.server || "outlook.office365.com"),
+          username: String(acc.username || ""),
+          password: "",
+        };
+      },
+
+      openExchangeAccount() {
+        this.hydrateExchangeFormFromAccount();
+        this.editingExchangeAccount = true;
+      },
+
+      async saveExchangeAccount() {
+        const server = String(this.newExchange?.server || "").trim();
+        const user = String(this.newExchange?.username || "").trim();
+        const pass = String(this.newExchange?.password || "");
+        const hasExistingPassword = Boolean(this.exchangeAccount?.has_password);
+        if (!server || !user || (!pass && !hasExistingPassword)) {
+          this.error = "Exchange server, username, and password are required.";
+          return;
+        }
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "set_exchange_account",
+            ctxid: this.ctxid || selectedContextId(),
+            label: "",
+            server,
+            username: user,
+            password: pass,
+          });
+          this._applyExchangeResult(result);
+          if (!this.error) {
+            this.hydrateExchangeFormFromAccount();
+            this.editingExchangeAccount = false;
+            // Auto-test so the user sees calendar discovery immediately.
+            if (this.exchangeAccount?.id) await this.testExchangeAccount();
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to configure Exchange account", error);
+          this.error = String(error?.message || error || "Failed to configure Exchange account");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async removeExchangeAccount() {
+        if (!this.exchangeAccount) return;
+        if (!window.confirm("Remove this Exchange account association? Local .ics files will be kept.")) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "remove_exchange_account",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.exchangeAccount = null;
+          this.exchangeAccounts = [];
+          this.exchangeSyncStatus = null;
+          this.selectedExchangeCalendarId = "";
+          this.selectedExchangeCalendarLabel = "";
+          this.newExchange = this._emptyExchangeForm();
+          this.editingExchangeAccount = false;
+          this._applyExchangeResult(result);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to remove Exchange account", error);
+          this.error = String(error?.message || error || "Failed to remove Exchange account");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async testExchangeAccount() {
+        if (!this.exchangeAccount) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "test_exchange_account",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this._applyExchangeResult(result);
+          const test = result?.exchange_test;
+          if (test && test.ok === false) {
+            if (this.exchangeAccount) {
+              this.exchangeAccount = { ...this.exchangeAccount, status: "error" };
+              this.exchangeAccounts = [this.exchangeAccount];
+            }
+            this.error = test.error || "Exchange verification failed.";
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to test Exchange account", error);
+          if (this.exchangeAccount) {
+            this.exchangeAccount = { ...this.exchangeAccount, status: "error" };
+            this.exchangeAccounts = [this.exchangeAccount];
+          }
+          this.error = String(error?.message || error || "Failed to test Exchange account");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async selectExchangeCalendar(calendarId) {
+        const cleanId = String(calendarId || "").trim();
+        this.selectedExchangeCalendarId = cleanId;
+        if (!this.exchangeAccount || !cleanId) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "select_exchange_calendar",
+            ctxid: this.ctxid || selectedContextId(),
+            calendar_id: cleanId,
+          });
+          this._applyExchangeResult(result);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to select Exchange calendar", error);
+          this.error = String(error?.message || error || "Failed to select Exchange calendar");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async syncExchangeIcsFiles() {
+        if (!this.exchangeAccount) {
+          this.error = "Configure an Exchange account before syncing.";
+          return;
+        }
+        if (!this.exchangeAccount.selected_calendar_id) {
+          this.error = "Select an Exchange calendar before syncing.";
+          return;
+        }
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "sync_exchange_ics_files",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this._applyExchangeResult(result);
+          const sync = result?.exchange_sync || {};
+          if (result?.ok === false || sync?.ok === false) {
+            this.error = result?.error || (Array.isArray(sync?.errors) ? sync.errors.join("; ") : "Exchange sync failed.");
+          } else {
+            const bits = [
+              `Exchange ${sync.calendar_name || "calendar"}`,
+              `remote ${Number(sync.remote_count || 0)}`,
+              `downloaded ${Number(sync.downloaded || 0)}`,
+              `updated ${Number(sync.updated || 0)}`,
+              `deleted local ${Number(sync.deleted_local || 0)}`,
+            ];
+            this.lastSyncSummary = bits.join(" · ");
+          }
+          // Refresh local files so the new exchange-synced ICS subdir reflects.
+          await this.refresh?.();
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to sync Exchange ICS files", error);
+          if (this.exchangeAccount) {
+            this.exchangeAccount = { ...this.exchangeAccount, status: "error" };
+            this.exchangeAccounts = [this.exchangeAccount];
+          }
+          this.error = String(error?.message || error || "Failed to sync Exchange ICS files");
+        } finally {
+          this.loading = false;
+        }
+      },
+
 
       async refreshCaldavEvents() {
         if (!this.caldavAccount) return;
