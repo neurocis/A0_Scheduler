@@ -104,6 +104,17 @@ from usr.plugins.a0_scheduler.helpers.agent_caldav import (
     test_caldav_account,
     upsert_caldav_event,
 )
+from usr.plugins.a0_scheduler.helpers.agent_exchange import (
+    add_exchange_account,
+    get_exchange_account,
+    get_exchange_sync_status,
+    list_exchange_accounts,
+    list_exchange_calendars,
+    remove_exchange_account,
+    select_exchange_calendar,
+    sync_exchange_ics_files,
+    test_exchange_account,
+)
 
 
 class AgentCalendar(ApiHandler):
@@ -307,6 +318,104 @@ class AgentCalendar(ApiHandler):
                     account_id=str(input.get("account_id") or input.get("id") or ""),
                     href=str(input.get("href") or ""),
                 )
+
+            # ----- Exchange account lifecycle -----
+            if action in {"get_exchange_account", "list_exchange_accounts"}:
+                payload = list_calendar_stack(ctxid)
+                account = get_exchange_account(ctxid)
+                payload["exchange_account"] = account
+                payload["exchange_accounts"] = [account] if account else []
+                return payload
+
+            if action in {"set_exchange_account", "add_exchange_account"}:
+                account = add_exchange_account(
+                    ctxid=ctxid,
+                    label=str(input.get("label") or ""),
+                    server=str(input.get("server") or input.get("server_url") or ""),
+                    username=str(input.get("username") or ""),
+                    password=str(input.get("password") or ""),
+                )
+                payload = list_calendar_stack(ctxid)
+                payload["exchange_account"] = account
+                payload["exchange_accounts"] = [account] if account else []
+                payload["added"] = account
+                payload["set"] = account
+                return payload
+
+            if action == "remove_exchange_account":
+                removed = remove_exchange_account(
+                    ctxid=ctxid,
+                    account_id=str(input.get("account_id") or input.get("id") or ""),
+                )
+                payload = list_calendar_stack(ctxid)
+                payload["exchange_account"] = None
+                payload["exchange_accounts"] = []
+                payload["removed"] = removed
+                return payload
+
+            if action == "test_exchange_account":
+                result = test_exchange_account(
+                    ctxid=ctxid,
+                    account_id=str(input.get("account_id") or input.get("id") or ""),
+                )
+                payload = list_calendar_stack(ctxid)
+                payload["exchange_account"] = get_exchange_account(ctxid)
+                payload["exchange_accounts"] = list_exchange_accounts(ctxid)
+                payload["exchange_test"] = result
+                payload["exchange_calendars"] = result.get("calendars", [])
+                return payload
+
+            if action == "list_exchange_calendars":
+                result = list_exchange_calendars(
+                    ctxid=ctxid,
+                    account_id=str(input.get("account_id") or input.get("id") or ""),
+                )
+                payload = list_calendar_stack(ctxid)
+                payload["exchange_account"] = get_exchange_account(ctxid)
+                payload["exchange_accounts"] = list_exchange_accounts(ctxid)
+                payload["exchange_calendars"] = result.get("calendars", [])
+                payload["exchange_test"] = result
+                return payload
+
+            if action == "select_exchange_calendar":
+                selected = select_exchange_calendar(
+                    ctxid=ctxid,
+                    account_id=str(input.get("account_id") or input.get("id") or ""),
+                    calendar_id=str(
+                        input.get("calendar_id")
+                        or input.get("id")
+                        or input.get("url")
+                        or input.get("collection_url")
+                        or ""
+                    ),
+                )
+                payload = list_calendar_stack(ctxid)
+                payload["exchange_account"] = get_exchange_account(ctxid)
+                payload["exchange_accounts"] = list_exchange_accounts(ctxid)
+                payload["exchange_selected"] = selected
+                return payload
+
+            if action == "sync_exchange_ics_files":
+                result = sync_exchange_ics_files(
+                    ctxid=ctxid,
+                    account_id=str(input.get("account_id") or input.get("id") or ""),
+                )
+                payload = list_calendar_stack(ctxid)
+                payload["exchange_account"] = get_exchange_account(ctxid)
+                payload["exchange_accounts"] = list_exchange_accounts(ctxid)
+                payload["exchange_sync"] = result.get("sync")
+                payload["exchange_sync_status"] = result.get("sync_status")
+                payload["ok"] = bool(result.get("ok"))
+                if not result.get("ok"):
+                    payload["error"] = result.get("error") or ""
+                return payload
+
+            if action in {"get_exchange_sync_status", "sync_exchange_status"}:
+                result = get_exchange_sync_status(
+                    ctxid=ctxid,
+                    account_id=str(input.get("account_id") or input.get("id") or ""),
+                )
+                return result
 
             return {"ok": False, "error": f"unknown action: {action}"}
         except Exception as exc:
