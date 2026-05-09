@@ -639,6 +639,21 @@
     color: #ff5f57;
   }
 
+
+  .a0-agent-calendar-account-kind-badge {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    border-radius: 999px;
+    padding: 0.08rem 0.45rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    color: rgba(226, 232, 240, 0.92);
+    background: rgba(15, 23, 42, 0.45);
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+  }
   .a0-agent-calendar-caldav-status-empty {
     color: rgba(255,255,255,0.94);
   }
@@ -1019,18 +1034,21 @@
               <div class="a0-agent-calendar-caldav-title-wrap">
                 <div class="a0-agent-calendar-caldav-title">
                   <span class="a0-agent-calendar-caldav-status"
-                        :class="$store.agentCalendar.caldavStatusClass()"
-                        :title="$store.agentCalendar.caldavStatusTitle()"
-                        x-text="$store.agentCalendar.caldavStatusGlyph()"></span>
-                  <h3 class="a0-agent-calendar-section-header">CalDAV Account</h3>
+                        :class="$store.agentCalendar.accountStatusClass()"
+                        :title="$store.agentCalendar.accountStatusTitle()"
+                        x-text="$store.agentCalendar.accountStatusGlyph()"></span>
+                  <h3 class="a0-agent-calendar-section-header">Account</h3>
+                  <span class="a0-agent-calendar-account-kind-badge"
+                        x-show="$store.agentCalendar.accountKindLabel()"
+                        x-text="$store.agentCalendar.accountKindLabel()"></span>
                 </div>
                 <div class="a0-agent-calendar-actions" style="justify-content:flex-end; align-items:center; gap:0.45rem;">
                   <span class="a0-agent-calendar-row-meta" style="white-space: nowrap; opacity: 0.92;"
-                        x-show="$store.agentCalendar.caldavSyncStatusText()"
-                        x-text="$store.agentCalendar.caldavSyncStatusText()"></span>
+                        x-show="$store.agentCalendar.accountSyncStatusText()"
+                        x-text="$store.agentCalendar.accountSyncStatusText()"></span>
                   <button type="button"
                           class="a0-agent-calendar-small-button a0-agent-calendar-conflict-button"
-                          x-show="$store.agentCalendar.conflictCount() > 0"
+                          x-show="$store.agentCalendar.accountKind() === 'caldav' && $store.agentCalendar.conflictCount() > 0"
                           :disabled="$store.agentCalendar.loading"
                           title="Resolve sync conflicts"
                           aria-label="Resolve sync conflicts"
@@ -1040,10 +1058,10 @@
                   </button>
                   <button type="button"
                           class="a0-agent-calendar-small-button a0-agent-calendar-icon-button"
-                          :disabled="$store.agentCalendar.loading || !$store.agentCalendar.caldavAccount || !$store.agentCalendar.caldavAccount.selected_collection_url"
+                          :disabled="$store.agentCalendar.loading || !$store.agentCalendar.account || !$store.agentCalendar.accountSelectedTarget()"
                           title="Sync"
                           aria-label="Sync"
-                          @click="$store.agentCalendar.syncCaldavIcsFiles()">
+                          @click="$store.agentCalendar.syncAccount()">
                     <svg class="a0-agent-calendar-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"></path>
                       <path d="M4 4v4h4"></path>
@@ -1056,136 +1074,64 @@
               <div class="a0-agent-calendar-caldav-web-row">
                 <button type="button"
                         class="a0-agent-calendar-small-button"
-                        :disabled="!$store.agentCalendar.safeHttpUrl($store.agentCalendar.newCaldav.webui_calendar_url)"
+                        :disabled="!$store.agentCalendar.safeHttpUrl($store.agentCalendar.newAccount.webui_calendar_url)"
                         title="Open the configured WebUI calendar URL"
                         @click="$store.agentCalendar.openConfiguredWebCalendar()">
                   Open My Calendar
                 </button>
-                <input type="url" placeholder="WebUI Calendar URL (optional)" x-model="$store.agentCalendar.newCaldav.webui_calendar_url">
+                <input type="url" placeholder="WebUI Calendar URL (optional)" x-model="$store.agentCalendar.newAccount.webui_calendar_url">
               </div>
             </div>
             <div class="a0-agent-calendar-input-row a0-agent-calendar-caldav-form">
               <div class="a0-agent-calendar-caldav-server-collection">
-                <input type="url" placeholder="CalDAV server URL, e.g. https://caldav.example.com" x-model="$store.agentCalendar.newCaldav.server_url">
+                <input type="text" placeholder="Server URL or Exchange host" x-model="$store.agentCalendar.newAccount.server_url">
                 <select class="a0-agent-calendar-caldav-collection-select"
-                        x-model="$store.agentCalendar.selectedCaldavCollectionUrl"
-                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.caldavAccount"
-                        title="Selected CalDAV collection for sync"
-                        @pointerdown="$store.agentCalendar.refreshCaldavCollectionsForDropdown()"
-                        @focus="$store.agentCalendar.refreshCaldavCollectionsForDropdown()"
-                        @change="$store.agentCalendar.selectCaldavCollection($event.target.value)">
-                  <option value="" disabled>Collection…</option>
-                  <template x-for="collection in $store.agentCalendar.caldavCollections()" :key="collection.url || collection.name || collection.display_name">
-                    <option :value="collection.url" x-text="$store.agentCalendar.caldavCollectionLabel(collection)"></option>
-                  </template>
-                </select>
-                <button type="button"
-                        class="a0-agent-calendar-small-button a0-agent-calendar-icon-button"
-                        :disabled="$store.agentCalendar.loading || $store.agentCalendar.collectionRefreshInflight || !$store.agentCalendar.caldavAccount"
-                        title="Refresh CalDAV collections"
-                        aria-label="Refresh CalDAV collections"
-                        @click="$store.agentCalendar.refreshCaldavCollections()">
-                  ↻
-                </button>
-              </div>
-              <input type="text" placeholder="Username" autocomplete="username" x-model="$store.agentCalendar.newCaldav.username">
-              <input type="password" placeholder="Password / App password" autocomplete="new-password" x-model="$store.agentCalendar.newCaldav.password" @keydown.enter="$store.agentCalendar.addCaldavAccount()">
-              <div class="a0-agent-calendar-caldav-account-actions">
-                <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.addCaldavAccount()">
-                  Save
-                </button>
-                <button type="button"
-                        class="a0-agent-calendar-small-button"
-                        x-show="$store.agentCalendar.caldavAccount"
-                        :disabled="$store.agentCalendar.loading"
-                        title="Remove the CalDAV account association but keep local .ics files"
-                        @click="$store.agentCalendar.removeCaldavAccount()">
-                  Remove
-                </button>
-              </div>
-            </div>
-            <div class="a0-agent-calendar-row-meta" x-show="$store.agentCalendar.lastSyncSummary" x-text="$store.agentCalendar.lastSyncSummary"></div>
-          </div>
-          <!-- Exchange Account section (mirrors CalDAV) -->
-          <div class="a0-agent-calendar-section">
-            <div class="a0-agent-calendar-caldav-header-row">
-              <div class="a0-agent-calendar-caldav-title-wrap">
-                <div class="a0-agent-calendar-caldav-title">
-                  <span class="a0-agent-calendar-caldav-status"
-                        :class="$store.agentCalendar.exchangeStatusClass()"
-                        :title="$store.agentCalendar.exchangeStatusTitle()"
-                        x-text="$store.agentCalendar.exchangeStatusGlyph()"></span>
-                  <h3 class="a0-agent-calendar-section-header">Exchange Account</h3>
-                </div>
-                <div class="a0-agent-calendar-actions" style="justify-content:flex-end; align-items:center; gap:0.45rem;">
-                  <span class="a0-agent-calendar-row-meta" style="white-space: nowrap; opacity: 0.92;"
-                        x-show="$store.agentCalendar.exchangeSyncStatusText()"
-                        x-text="$store.agentCalendar.exchangeSyncStatusText()"></span>
-                  <button type="button"
-                          class="a0-agent-calendar-small-button a0-agent-calendar-icon-button"
-                          :disabled="$store.agentCalendar.loading || !$store.agentCalendar.exchangeAccount || !$store.agentCalendar.exchangeAccount.selected_calendar_id"
-                          title="Sync Exchange"
-                          aria-label="Sync Exchange"
-                          @click="$store.agentCalendar.syncExchangeIcsFiles()">
-                    <svg class="a0-agent-calendar-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                      <path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"></path>
-                      <path d="M4 4v4h4"></path>
-                      <path d="M4 13a8 8 0 0 0 14.5 4.5L20 16"></path>
-                      <path d="M20 20v-4h-4"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="a0-agent-calendar-input-row a0-agent-calendar-caldav-form">
-              <div class="a0-agent-calendar-caldav-server-collection">
-                <input type="text" placeholder="Exchange server, e.g. outlook.office365.com" x-model="$store.agentCalendar.newExchange.server">
-                <select class="a0-agent-calendar-caldav-collection-select"
-                        x-model="$store.agentCalendar.selectedExchangeCalendarId"
-                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.exchangeAccount"
-                        title="Selected Exchange calendar folder for sync"
-                        @pointerdown="$store.agentCalendar.refreshExchangeCalendarsForDropdown()"
-                        @focus="$store.agentCalendar.refreshExchangeCalendarsForDropdown()"
-                        @change="$store.agentCalendar.selectExchangeCalendar($event.target.value)">
+                        x-model="$store.agentCalendar.selectedAccountCalendarIdOrUrl"
+                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.account"
+                        title="Selected calendar for sync"
+                        @pointerdown="$store.agentCalendar.refreshAccountCalendarsForDropdown()"
+                        @focus="$store.agentCalendar.refreshAccountCalendarsForDropdown()"
+                        @change="$store.agentCalendar.selectAccountCalendar($event.target.value)">
                   <option value="" disabled>Calendar…</option>
-                  <template x-for="calendar in $store.agentCalendar.exchangeCalendars()" :key="calendar.id || calendar.name">
-                    <option :value="calendar.id" x-text="$store.agentCalendar.exchangeCalendarLabel(calendar)"></option>
+                  <template x-for="calendar in $store.agentCalendar.accountCalendars()" :key="calendar.id_or_url || calendar.url || calendar.id || calendar.name || calendar.display_name">
+                    <option :value="$store.agentCalendar.accountCalendarValue(calendar)" x-text="$store.agentCalendar.accountCalendarLabel(calendar)"></option>
                   </template>
                 </select>
                 <button type="button"
                         class="a0-agent-calendar-small-button a0-agent-calendar-icon-button"
-                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.exchangeAccount"
-                        title="Refresh Exchange calendars"
-                        aria-label="Refresh Exchange calendars"
-                        @click="$store.agentCalendar.listExchangeCalendars()">
+                        :disabled="$store.agentCalendar.loading || $store.agentCalendar.collectionRefreshInflight || !$store.agentCalendar.account"
+                        title="Refresh calendars"
+                        aria-label="Refresh calendars"
+                        @click="$store.agentCalendar.refreshAccountCalendars()">
                   ↻
                 </button>
               </div>
-              <input type="text" placeholder="Username (email)" autocomplete="username" x-model="$store.agentCalendar.newExchange.username">
-              <input type="password" placeholder="Password" autocomplete="new-password" x-model="$store.agentCalendar.newExchange.password" @keydown.enter="$store.agentCalendar.saveExchangeAccount()">
+              <input type="text" placeholder="Username" autocomplete="username" x-model="$store.agentCalendar.newAccount.username">
+              <input type="password" placeholder="Password / App password" autocomplete="new-password" x-model="$store.agentCalendar.newAccount.password" @keydown.enter="$store.agentCalendar.saveAccount()">
               <div class="a0-agent-calendar-caldav-account-actions">
-                <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.saveExchangeAccount()">
-                  Save
+                <button type="button" class="a0-agent-calendar-small-button" @click="$store.agentCalendar.saveAccount()">
+                  Save + Test
                 </button>
                 <button type="button"
                         class="a0-agent-calendar-small-button"
-                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.exchangeAccount"
-                        title="Test the Exchange connection"
-                        @click="$store.agentCalendar.testExchangeAccount()">
+                        :disabled="$store.agentCalendar.loading || !$store.agentCalendar.account"
+                        title="Test stored account connection without protocol guessing"
+                        @click="$store.agentCalendar.testAccount()">
                   Test
                 </button>
                 <button type="button"
                         class="a0-agent-calendar-small-button"
-                        x-show="$store.agentCalendar.exchangeAccount"
+                        x-show="$store.agentCalendar.account"
                         :disabled="$store.agentCalendar.loading"
-                        title="Remove the Exchange account association but keep local .ics files"
-                        @click="$store.agentCalendar.removeExchangeAccount()">
+                        title="Remove the account association but keep local .ics files"
+                        @click="$store.agentCalendar.removeAccount()">
                   Remove
                 </button>
               </div>
             </div>
+            <div class="a0-agent-calendar-row-meta" x-show="$store.agentCalendar.detectedAccountText()" x-text="$store.agentCalendar.detectedAccountText()"></div>
+            <div class="a0-agent-calendar-row-meta" x-show="$store.agentCalendar.lastSyncSummary" x-text="$store.agentCalendar.lastSyncSummary"></div>
           </div>
-          <!-- /Exchange Account section -->
 
 
         </div>
@@ -1545,6 +1491,13 @@
       collectionRefreshInflight: false,
       error: "",
       lastSyncSummary: "",
+      account: null,
+      accounts: [],
+      accountSyncStatus: null,
+      selectedAccountCalendarIdOrUrl: "",
+      selectedAccountCalendarLabel: "",
+      newAccount: { server_url: "", webui_calendar_url: "", username: "", password: "" },
+      detectedAccountKind: "",
       caldavSyncStatus: null,
       conflictWindowOpen: false,
       ctxid: "",
@@ -2130,6 +2083,12 @@
         this.agentName = "";
         this.error = "";
         this.files = [];
+        this.account = null;
+        this.accounts = [];
+        this.accountSyncStatus = null;
+        this.selectedAccountCalendarIdOrUrl = "";
+        this.selectedAccountCalendarLabel = "";
+        this.detectedAccountKind = "";
         this.caldavAccount = null;
         this.caldavAccounts = [];
         this.caldavEvents = [];
@@ -2424,6 +2383,7 @@
         if (selectedName && selectedName !== this.ctxid) this.agentName = selectedName;
         window.requestAnimationFrame(() => this.syncPanelPlacement());
         await this.refresh();
+        if (this.accountSelectedTarget()) this.refreshAccountSyncStatus();
         if (this.caldavAccount?.selected_collection_url) this.refreshCaldavSyncStatus();
         window.requestAnimationFrame(() => this.syncPanelPlacement());
       },
@@ -2476,7 +2436,17 @@
         if (resultAgentName && resultAgentName !== this.ctxid) this.agentName = resultAgentName;
         this.calendarDir = result.calendar_dir || "";
         this.files = Array.isArray(result.files) ? result.files : [];
-        const account = result.caldav_account || (Array.isArray(result.caldav_accounts) ? result.caldav_accounts[0] : null) || null;
+        const unifiedAccount = result.account || (Array.isArray(result.accounts) ? result.accounts[0] : null) || null;
+        if ("account" in result || "accounts" in result) {
+          this.account = unifiedAccount;
+          this.accounts = unifiedAccount ? [unifiedAccount] : [];
+          this.detectedAccountKind = String(unifiedAccount?.kind || this.detectedAccountKind || "").toLowerCase();
+          this.selectedAccountCalendarIdOrUrl = String(unifiedAccount?.selected_target?.id_or_url || "");
+          this.selectedAccountCalendarLabel = String(unifiedAccount?.selected_target?.name || unifiedAccount?.selected_target?.id_or_url || "");
+          this.accountSyncStatus = result?.account_sync_status || result?.sync_status || this.accountSyncStatus || null;
+          this.hydrateAccountFormFromAccount();
+        }
+        const account = result.caldav_account || (Array.isArray(result.caldav_accounts) ? result.caldav_accounts[0] : null) || (unifiedAccount?.kind === "caldav" ? this.accountToCaldavAccount(unifiedAccount) : null) || null;
         this.caldavAccount = account;
         this.caldavAccounts = account ? [account] : [];
         this.selectedCaldavCollectionUrl = String(account?.selected_collection_url || "");
@@ -2484,6 +2454,13 @@
         this.hydrateCaldavFormFromAccount();
         this.notifyCalendarIndicatorChanged(result);
         if (this.selectedSource === "local" && this.selectedFileName && !this.pendingLocalCalendar && !this.files.some((file) => file?.name === this.selectedFileName)) this.closeIcsFile();
+        if (unifiedAccount?.kind === "exchange") {
+          this.exchangeAccount = this.accountToExchangeAccount(unifiedAccount);
+          this.exchangeAccounts = this.exchangeAccount ? [this.exchangeAccount] : [];
+          this.selectedExchangeCalendarId = String(this.exchangeAccount?.selected_calendar_id || "");
+          this.selectedExchangeCalendarLabel = String(this.exchangeAccount?.selected_calendar_name || this.exchangeAccount?.selected_calendar_id || "");
+          this.exchangeSyncStatus = result?.account_sync_status || result?.sync_status || this.exchangeSyncStatus || null;
+        }
         if (this.selectedSource === "caldav" && (!this.caldavAccount ||
             (this.selectedCaldavAccountId && String(this.caldavAccount?.id || "") !== String(this.selectedCaldavAccountId)))) {
           this.closeCaldavCollection();
@@ -2657,6 +2634,371 @@
         } catch (error) {
           console.error("[Agent Calendar] Failed to clear event", error);
           this.error = String(error?.message || error || "Failed to clear event");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      _emptyAccountForm() {
+        return { server_url: "", webui_calendar_url: "", username: "", password: "" };
+      },
+
+      accountKind() {
+        return String(this.account?.kind || this.detectedAccountKind || "").trim().toLowerCase();
+      },
+
+      accountKindLabel() {
+        const kind = this.accountKind();
+        if (kind === "exchange") return "Exchange";
+        if (kind === "caldav") return "CalDAV";
+        return "";
+      },
+
+      detectedAccountText() {
+        const label = this.accountKindLabel();
+        return label && this.account?.status ? `Detected type: ${label}` : "";
+      },
+
+      accountToCaldavAccount(acc) {
+        if (!acc || acc.kind !== "caldav") return null;
+        return {
+          ...acc,
+          server_url: String(acc.server_url || ""),
+          collections: Array.isArray(acc.collections) ? acc.collections : [],
+          selected_collection_url: String(acc.selected_collection_url || acc.selected_target?.id_or_url || ""),
+          selected_collection_name: String(acc.selected_collection_name || acc.selected_target?.name || ""),
+          status: acc.status === "verified" ? "ok" : acc.status,
+        };
+      },
+
+      accountToExchangeAccount(acc) {
+        if (!acc || acc.kind !== "exchange") return null;
+        return {
+          ...acc,
+          server: String(acc.server || acc.server_url || ""),
+          calendars: Array.isArray(acc.calendars) ? acc.calendars : [],
+          selected_calendar_id: String(acc.selected_calendar_id || acc.selected_target?.id_or_url || ""),
+          selected_calendar_name: String(acc.selected_calendar_name || acc.selected_target?.name || ""),
+          status: acc.status === "verified" ? "ok" : acc.status,
+        };
+      },
+
+      accountSelectedTarget() {
+        return String(this.account?.selected_target?.id_or_url || this.selectedAccountCalendarIdOrUrl || "").trim();
+      },
+
+      accountStatusKind() {
+        const acc = this.account || null;
+        if (!acc || !String(acc.server_url || acc.server || "").trim()) return "empty";
+        const status = String(acc.status || acc.connection_status || "").toLowerCase();
+        if (["ok", "verified", "connected", "success", "working"].includes(status)) return "ok";
+        if (["error", "failed", "fail", "invalid"].includes(status)) return "error";
+        return "empty";
+      },
+
+      accountStatusGlyph() {
+        const kind = this.accountStatusKind();
+        if (kind === "ok") return "✓";
+        if (kind === "error") return "✕";
+        return "O";
+      },
+
+      accountStatusClass() {
+        return `a0-agent-calendar-caldav-status-${this.accountStatusKind()}`;
+      },
+
+      accountStatusTitle() {
+        const kind = this.accountStatusKind();
+        const label = this.accountKindLabel() || "Account";
+        if (kind === "ok") return `${label} connection works`;
+        if (kind === "error") return `${label} connection failed`;
+        return "Account not configured";
+      },
+
+      hydrateAccountFormFromAccount() {
+        const acc = this.account || null;
+        if (!acc) {
+          this.newAccount = this._emptyAccountForm();
+          return;
+        }
+        this.newAccount = {
+          server_url: String(acc.server_url || acc.server || ""),
+          webui_calendar_url: caldavWebUrl(acc),
+          username: String(acc.username || ""),
+          password: "",
+        };
+      },
+
+      accountCalendarValue(calendar) {
+        return String(calendar?.id_or_url || calendar?.url || calendar?.id || "").trim();
+      },
+
+      accountCalendarLabel(calendar) {
+        if (!calendar) return "";
+        return String(calendar.name || calendar.display_name || calendar.displayName || calendar.id_or_url || calendar.url || calendar.id || "").trim() || "Calendar";
+      },
+
+      accountCalendars() {
+        const acc = this.account || null;
+        if (!acc) return [];
+        const raw = Array.isArray(acc.calendars) ? acc.calendars : (Array.isArray(acc.collections) ? acc.collections : []);
+        const seen = new Set();
+        const out = [];
+        raw.forEach((calendar) => {
+          if (!calendar || typeof calendar !== "object") return;
+          const id = this.accountCalendarValue(calendar);
+          if (!id || seen.has(id)) return;
+          seen.add(id);
+          out.push({ ...calendar, id_or_url: id, name: this.accountCalendarLabel(calendar) });
+        });
+        const selected = this.accountSelectedTarget();
+        if (selected && !seen.has(selected)) out.unshift({ id_or_url: selected, url: selected, id: selected, name: this.account?.selected_target?.name || selected });
+        return out;
+      },
+
+      _applyAccountResult(result) {
+        if (!result) return;
+        const acc = result.account || (Array.isArray(result.accounts) ? result.accounts[0] : null) || null;
+        if ("account" in result || "accounts" in result) {
+          this.account = acc;
+          this.accounts = acc ? [acc] : [];
+          this.detectedAccountKind = String(acc?.kind || this.detectedAccountKind || "").toLowerCase();
+          this.selectedAccountCalendarIdOrUrl = String(acc?.selected_target?.id_or_url || "");
+          this.selectedAccountCalendarLabel = String(acc?.selected_target?.name || acc?.selected_target?.id_or_url || "");
+          this.hydrateAccountFormFromAccount();
+          if (acc?.kind === "caldav") {
+            this.caldavAccount = this.accountToCaldavAccount(acc);
+            this.caldavAccounts = this.caldavAccount ? [this.caldavAccount] : [];
+            this.selectedCaldavCollectionUrl = this.selectedAccountCalendarIdOrUrl;
+          } else if (acc?.kind === "exchange") {
+            this.exchangeAccount = this.accountToExchangeAccount(acc);
+            this.exchangeAccounts = this.exchangeAccount ? [this.exchangeAccount] : [];
+            this.selectedExchangeCalendarId = this.selectedAccountCalendarIdOrUrl;
+          }
+        }
+        if (result.account_sync_status || result.sync_status) this.accountSyncStatus = result.account_sync_status || result.sync_status;
+      },
+
+      async saveAccount() {
+        const server = String(this.newAccount?.server_url || "").trim();
+        const webUrl = String(this.newAccount?.webui_calendar_url || "").trim();
+        const user = String(this.newAccount?.username || "").trim();
+        const pass = String(this.newAccount?.password || "");
+        const hasExistingPassword = Boolean(this.account?.has_password);
+        if (!server || !user || (!pass && !hasExistingPassword)) {
+          this.error = "Server, username, and password are required.";
+          return;
+        }
+        if (webUrl && !/^https?:\/\//i.test(webUrl)) {
+          this.error = "WebUI Calendar URL must start with http:// or https://.";
+          return;
+        }
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "set_account",
+            ctxid: this.ctxid || selectedContextId(),
+            label: "",
+            server_url: server,
+            webui_calendar_url: webUrl,
+            username: user,
+            password: pass,
+          });
+          this.applyResult(result);
+          this._applyAccountResult(result);
+          const account = result?.account || result?.set || result?.added;
+          if (account?.kind) this.detectedAccountKind = String(account.kind).toLowerCase();
+          if (account?.id) await this.listAccountCalendars();
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to configure account", error);
+          this.error = String(error?.message || error || "Failed to configure account");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async removeAccount() {
+        if (!this.account) return;
+        if (!window.confirm("Remove this account association? Local .ics files will be kept.")) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "remove_account",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.account = null;
+          this.accounts = [];
+          this.accountSyncStatus = null;
+          this.selectedAccountCalendarIdOrUrl = "";
+          this.selectedAccountCalendarLabel = "";
+          this.newAccount = this._emptyAccountForm();
+          this.detectedAccountKind = "";
+          this.caldavAccount = null;
+          this.caldavAccounts = [];
+          this.exchangeAccount = null;
+          this.exchangeAccounts = [];
+          this.applyResult(result);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to remove account", error);
+          this.error = String(error?.message || error || "Failed to remove account");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async testAccount() {
+        if (!this.account) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "test_account",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.applyResult(result);
+          this._applyAccountResult(result);
+          const test = result?.test;
+          if (test && test.ok === false) {
+            if (this.account) this.account = { ...this.account, status: "error" };
+            this.error = test.error || "Account verification failed.";
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to test account", error);
+          if (this.account) this.account = { ...this.account, status: "error" };
+          this.error = String(error?.message || error || "Failed to test account");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async listAccountCalendars() {
+        if (!this.account) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "list_account_calendars",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.applyResult(result);
+          this._applyAccountResult(result);
+          const test = result?.test;
+          if (test && test.ok === false) this.error = test.error || "Account verification failed.";
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to list account calendars", error);
+          this.error = String(error?.message || error || "Failed to list account calendars");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      async refreshAccountCalendars() {
+        await this.listAccountCalendars();
+      },
+
+      async refreshAccountCalendarsForDropdown() {
+        if (!this.account || this.collectionRefreshInflight || this.loading) return;
+        this.collectionRefreshInflight = true;
+        try {
+          await this.listAccountCalendars();
+        } finally {
+          this.collectionRefreshInflight = false;
+        }
+      },
+
+      async selectAccountCalendar(value) {
+        const clean = String(value || "").trim();
+        this.selectedAccountCalendarIdOrUrl = clean;
+        if (!this.account || !clean) return;
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "select_account_calendar",
+            ctxid: this.ctxid || selectedContextId(),
+            calendar_id_or_url: clean,
+          });
+          this.applyResult(result);
+          this._applyAccountResult(result);
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to select account calendar", error);
+          this.error = String(error?.message || error || "Failed to select account calendar");
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      accountSyncStatusText() {
+        const kind = this.accountKind();
+        if (kind === "caldav") return this.caldavSyncStatusText();
+        if (kind === "exchange") return this.exchangeSyncStatusText();
+        const status = this.accountSyncStatus || null;
+        if (!this.account || !status) return "";
+        const state = String(status.state || "");
+        if (state === "never") return "Not synced yet";
+        if (state === "error") return `Sync error: ${status.last_error || "last sync failed"}`;
+        if (status.last_success_at) return `Last synced ${this.formatSyncAge(status.age_seconds)}`;
+        return "";
+      },
+
+      async refreshAccountSyncStatus() {
+        if (!this.account || !this.accountSelectedTarget()) return;
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "get_account_sync_status",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.accountSyncStatus = result?.sync_status || this.accountSyncStatus || null;
+          if (this.accountKind() === "caldav") this.caldavSyncStatus = this.accountSyncStatus;
+          if (this.accountKind() === "exchange") this.exchangeSyncStatus = this.accountSyncStatus;
+        } catch (error) {
+          console.warn("[Agent Calendar] Failed to refresh account sync status", error);
+        }
+      },
+
+      async syncAccount() {
+        const kind = this.accountKind();
+        if (!this.account) {
+          this.error = "Configure an account before syncing.";
+          return;
+        }
+        if (!this.accountSelectedTarget()) {
+          this.error = "Select a calendar before syncing.";
+          return;
+        }
+        this.loading = true;
+        this.error = "";
+        try {
+          const result = await callJsonApi("plugins/a0_scheduler/agent_calendar", {
+            action: "sync_account",
+            ctxid: this.ctxid || selectedContextId(),
+          });
+          this.applyResult(result);
+          this._applyAccountResult(result);
+          const sync = result?.sync || {};
+          this.accountSyncStatus = result?.sync_status || result?.account_sync_status || this.accountSyncStatus || null;
+          if (kind === "caldav") {
+            this.caldavSyncStatus = this.accountSyncStatus;
+            this.lastSyncSummary = this.syncSummaryText(sync);
+          } else if (kind === "exchange") {
+            this.exchangeSyncStatus = this.accountSyncStatus;
+            const bits = [
+              `Exchange ${sync.calendar_name || "calendar"}`,
+              `remote ${Number(sync.remote_count || 0)}`,
+              `downloaded ${Number(sync.downloaded || 0)}`,
+              `updated ${Number(sync.updated || 0)}`,
+              `deleted local ${Number(sync.deleted_local || 0)}`,
+            ];
+            this.lastSyncSummary = bits.join(" · ");
+          }
+          if (result?.ok === false || sync?.ok === false) this.error = result?.error || (Array.isArray(sync?.errors) ? sync.errors.join("; ") : "Account sync failed.");
+          await this.refresh?.();
+        } catch (error) {
+          console.error("[Agent Calendar] Failed to sync account", error);
+          if (this.account) this.account = { ...this.account, status: "error" };
+          this.error = String(error?.message || error || "Failed to sync account");
         } finally {
           this.loading = false;
         }
