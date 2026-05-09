@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REQUIRED_MODULES = ("caldav", "vobject", "icalendar")
+REQUIRED_MODULES = ("caldav", "vobject", "icalendar", "exchangelib")
 
 
 def _requirements_file() -> Path:
