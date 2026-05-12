@@ -127,6 +127,8 @@ from usr.plugins.a0_scheduler.helpers.agent_exchange import (
     test_exchange_account,
 )
 
+from usr.plugins.a0_scheduler.helpers import agent_scheduler_runtime as _runtime
+
 
 class AgentCalendar(ApiHandler):
     @classmethod
@@ -521,6 +523,46 @@ class AgentCalendar(ApiHandler):
                     account_id=str(input.get("account_id") or input.get("id") or ""),
                 )
                 return result
+
+            # ----- Runtime (Option B in-plugin dispatcher) -----
+            if action == "runtime_start":
+                _runtime.start_runtime()
+                return {"ok": True, "status": _runtime.runtime_status()}
+
+            if action == "runtime_status":
+                # Lazy-start so the runtime cold-starts on first UI poll.
+                status = _runtime.runtime_status()
+                if not status.get("running"):
+                    _runtime.start_runtime()
+                    status = _runtime.runtime_status()
+                return {"ok": True, "status": status}
+
+            if action == "runtime_stop":
+                _runtime.stop_runtime()
+                return {"ok": True, "status": _runtime.runtime_status()}
+
+            if action == "run_event_now":
+                result = await _runtime.run_event_now(
+                    ctxid=ctxid,
+                    ics_path=str(input.get("filename") or input.get("relative_path") or input.get("ics_path") or ""),
+                    kind=str(input.get("kind") or "start"),
+                    occurrence_iso=input.get("occurrence_iso"),
+                )
+                return result
+
+            if action == "list_fired_history":
+                history = _runtime.list_fired_history(
+                    ctxid=ctxid,
+                    ics_path=input.get("filename") or input.get("relative_path") or input.get("ics_path"),
+                    limit=int(input.get("limit") or 20),
+                )
+                return {"ok": True, "history": history}
+
+            if action == "clear_fired_history":
+                return _runtime.clear_fired_history(
+                    ctxid=ctxid,
+                    ics_path=input.get("filename") or input.get("relative_path") or input.get("ics_path"),
+                )
 
             return {"ok": False, "error": f"unknown action: {action}"}
         except Exception as exc:
