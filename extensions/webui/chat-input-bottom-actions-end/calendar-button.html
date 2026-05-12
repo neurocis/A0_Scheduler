@@ -945,6 +945,17 @@
         <div class="a0-agent-calendar-error" x-text="$store.agentCalendar.error"></div>
       </template>
 
+      <div class="a0-agent-calendar-runtime-bar" style="display:flex;align-items:center;gap:0.45rem;padding:0.15rem 0.25rem 0.4rem;font-size:0.8em;opacity:0.85;" :title="$store.agentCalendar.runtimeStatusTitle()">
+        <span x-text="$store.agentCalendar.runtimeStatusGlyph()" :style="$store.agentCalendar.runtimeStatusGlyphStyle()"></span>
+        <span style="flex:0 0 auto;">Runtime:</span>
+        <span x-text="$store.agentCalendar.runtimeStatusText()" style="flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <button type="button"
+                class="a0-agent-calendar-small-button"
+                style="padding:0.05rem 0.4rem;font-size:0.85em;"
+                @click="$store.agentCalendar.refreshRuntimeStatus(true)"
+                title="Refresh runtime status">Refresh</button>
+      </div>
+
       <template x-if="!$store.agentCalendar.loading">
         <div class="a0-agent-calendar-content-grid">
           <div class="a0-agent-calendar-section">
@@ -1004,6 +1015,16 @@
                       <svg class="a0-agent-calendar-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="M12 20h9"></path>
                         <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+                      </svg>
+                    </button>
+                    <button type="button"
+                            class="a0-agent-calendar-small-button a0-agent-calendar-file-icon-button"
+                            title="Run start block now"
+                            aria-label="Run now"
+                            x-show="$store.agentCalendar.fileHasJsonSidecar(file)"
+                            @click.stop="$store.agentCalendar.runEventNow(file, 'start')">
+                      <svg class="a0-agent-calendar-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <polygon points="5 3 21 12 5 21 5 3"></polygon>
                       </svg>
                     </button>
                     <button type="button"
@@ -3958,6 +3979,130 @@
           this.error = String(error?.message || error || "Failed to delete CalDAV event");
         } finally {
           this.loading = false;
+        }
+      },
+
+      // --- Runtime (Option B in-plugin dispatcher) ---
+      runtimeStatusData: { running: false, last_tick_iso: "", tick_count: 0, last_error: "", started_at: "", fired_recent: [] },
+      runtimeStatusInflight: false,
+      runtimeStatusTimer: null,
+      runtimeStatusGlyph() {
+        return "●";
+      },
+      runtimeStatusGlyphStyle() {
+        const s = this.runtimeStatusData || {};
+        if (s.last_error) return "color:#e74c3c;";
+        if (s.running) return "color:#2ecc71;";
+        return "color:#95a5a6;";
+      },
+      runtimeStatusText() {
+        const s = this.runtimeStatusData || {};
+        if (!s.running && !s.last_tick_iso) return "not started";
+        const parts = [];
+        parts.push(s.running ? "running" : "stopped");
+        if (s.last_tick_iso) {
+          try {
+            const d = new Date(s.last_tick_iso);
+            const hh = String(d.getHours()).padStart(2, "0");
+            const mm = String(d.getMinutes()).padStart(2, "0");
+            const ss = String(d.getSeconds()).padStart(2, "0");
+            parts.push(`last tick ${hh}:${mm}:${ss}`);
+          } catch (_e) {}
+        }
+        if (Number(s.tick_count || 0) > 0) parts.push(`#${s.tick_count}`);
+        if (s.last_error) parts.push(`error: ${String(s.last_error).slice(0, 60)}`);
+        return parts.join(" · ");
+      },
+      runtimeStatusTitle() {
+        const s = this.runtimeStatusData || {};
+        const parts = [];
+        if (s.started_at) parts.push(`started: ${s.started_at}`);
+        if (s.last_tick_iso) parts.push(`last tick: ${s.last_tick_iso}`);
+        parts.push(`tick count: ${s.tick_count || 0}`);
+        if (s.last_error) parts.push(`last error: ${s.last_error}`);
+        const recent = Array.isArray(s.fired_recent) ? s.fired_recent.slice(0, 5) : [];
+        if (recent.length) {
+          parts.push("recent firings:");
+          recent.forEach((entry) => {
+            parts.push(`  ${entry.fired_at || "?"} ${entry.kind || ""} ${entry.uid || ""} → ${entry.result || ""}${entry.error ? " ERR:" + entry.error : ""}`);
+          });
+        }
+        return parts.join("\n");
+      },
+      async refreshRuntimeStatus(force = false) {
+        if (this.runtimeStatusInflight && !force) return;
+        this.runtimeStatusInflight = true;
+        try {
+          const ctxid = this.ctxid || selectedContextId();
+          const result = await postCalendar({ action: "runtime_status", ctxid });
+          if (result && result.status) {
+            this.runtimeStatusData = result.status;
+          }
+        } catch (error) {
+          console.error("[Agent Calendar] runtime_status failed", error);
+        } finally {
+          this.runtimeStatusInflight = false;
+        }
+      },
+      startRuntimeStatusPolling() {
+        this.stopRuntimeStatusPolling();
+        this.refreshRuntimeStatus(true);
+        this.runtimeStatusTimer = setInterval(() => this.refreshRuntimeStatus(false), 30000);
+      },
+      stopRuntimeStatusPolling() {
+        if (this.runtimeStatusTimer) {
+          clearInterval(this.runtimeStatusTimer);
+          this.runtimeStatusTimer = null;
+        }
+      },
+      async runEventNow(file, kind) {
+        const filename = String(file?.relative_path || file?.name || "");
+        if (!filename) return;
+        try {
+          const result = await postCalendar({
+            action: "run_event_now",
+            ctxid: this.ctxid || selectedContextId(),
+            filename,
+            kind: kind || "start",
+          });
+          if (result && result.ok) {
+            this.lastSyncSummary = `Fired ${kind || "start"} for ${filename}: ${result.result || "ok"}`;
+          } else {
+            this.error = String(result?.error || "Run-now failed");
+          }
+          this.refreshRuntimeStatus(true);
+        } catch (error) {
+          console.error("[Agent Calendar] run_event_now failed", error);
+          this.error = String(error?.message || error || "Run-now failed");
+        }
+      },
+      async fireHistory(file) {
+        try {
+          const filename = String(file?.relative_path || file?.name || "");
+          const result = await postCalendar({
+            action: "list_fired_history",
+            ctxid: this.ctxid || selectedContextId(),
+            filename,
+            limit: 20,
+          });
+          return (result && result.history) || [];
+        } catch (error) {
+          console.error("[Agent Calendar] list_fired_history failed", error);
+          return [];
+        }
+      },
+      async clearFireHistory(file) {
+        try {
+          const filename = String(file?.relative_path || file?.name || "");
+          await postCalendar({
+            action: "clear_fired_history",
+            ctxid: this.ctxid || selectedContextId(),
+            filename,
+          });
+          this.lastSyncSummary = `Cleared firing history for ${filename}`;
+        } catch (error) {
+          console.error("[Agent Calendar] clear_fired_history failed", error);
+          this.error = String(error?.message || error || "Clear history failed");
         }
       },
     });
