@@ -107,6 +107,8 @@ class _RuntimeState:
         self._lock = threading.RLock()
         self.task: asyncio.Task | None = None
         self.loop: asyncio.AbstractEventLoop | None = None
+        self.thread: threading.Thread | None = None
+        self.ready_event: threading.Event | None = None
         self.running: bool = False
         self.last_tick_iso: str = ""
         self.tick_count: int = 0
@@ -1091,48 +1093,101 @@ async def _tick_loop() -> None:
 
 
 def start_runtime() -> dict[str, Any]:
-    """Idempotent — starts the singleton tick loop if not already running."""
+    """Idempotent — starts the singleton tick loop if not already running.
+
+    In normal WebUI/API usage this function is called from synchronous code with
+    no running asyncio loop.  In that case the runtime owns a daemon-thread event
+    loop.  We wait briefly for that thread to create the task and let
+    ``_tick_loop`` set ``_state.running`` so the immediately returned status does
+    not incorrectly say "not started".
+    """
+    ready: threading.Event | None = None
     with _state._lock:
         if _state.task is not None and not _state.task.done():
             return runtime_status()
+        if _state.thread is not None and _state.thread.is_alive() and _state.loop is not None:
+            return runtime_status()
+
+        _state.running = False
+        _state.last_error = ""
+        _state.ready_event = threading.Event()
+        ready = _state.ready_event
+
         try:
-            loop = asyncio.get_event_loop()
+            running_loop = asyncio.get_running_loop()
         except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            running_loop = None
+
         try:
-            if loop.is_running():
-                _state.task = asyncio.ensure_future(_tick_loop(), loop=loop)
+            if running_loop is not None and running_loop.is_running():
+                _state.loop = running_loop
+                _state.task = running_loop.create_task(_tick_loop())
+                running_loop.call_soon(lambda: ready.set() if ready is not None else None)
             else:
-                # Run loop in a dedicated thread so we don't block the caller.
-                _start_thread_loop()
+                _start_thread_loop_locked()
         except Exception as exc:
-            _state.last_error = f"start failed: {exc}"
+            _state.last_error = f"start failed: {type(exc).__name__}: {exc}"
             logger.exception("failed to start runtime: %s", exc)
-        _state.loop = loop
+            if ready is not None:
+                ready.set()
+
+    if ready is not None:
+        ready.wait(timeout=2.0)
     return runtime_status()
 
 
-def _start_thread_loop() -> None:
-    """Run an asyncio event loop in a dedicated daemon thread for the ticker.
+def _start_thread_loop_locked() -> None:
+    """Start a dedicated daemon-thread asyncio loop.
 
-    This is used when ``start_runtime`` is called from a sync context that has
-    no running loop (e.g. during plugin install).
+    Caller must hold ``_state._lock``.  The thread owns ``_state.loop`` and
+    ``_state.task`` so status/stop always point at the actual running loop.
     """
+    ready = _state.ready_event
+
     def _runner() -> None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        _state.loop = loop
         try:
-            _state.task = loop.create_task(_tick_loop())
+            task = loop.create_task(_tick_loop())
+            with _state._lock:
+                _state.loop = loop
+                _state.task = task
+            # Run the loop briefly enough for _tick_loop to set _state.running.
+            loop.call_soon(lambda: ready.set() if ready is not None else None)
             loop.run_forever()
+        except Exception as exc:
+            _state.last_error = f"thread loop failed: {type(exc).__name__}: {exc}"
+            logger.exception("runtime thread loop failed: %s", exc)
+            if ready is not None:
+                ready.set()
         finally:
+            try:
+                pending = asyncio.all_tasks(loop)
+                for pending_task in pending:
+                    pending_task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            except Exception:
+                pass
             try:
                 loop.close()
             except Exception:
                 pass
-    t = threading.Thread(target=_runner, name="a0-scheduler-runtime", daemon=True)
-    t.start()
+            with _state._lock:
+                if _state.loop is loop:
+                    _state.loop = None
+                _state.task = None
+                _state.running = False
+
+    thread = threading.Thread(target=_runner, name="a0-scheduler-runtime", daemon=True)
+    _state.thread = thread
+    thread.start()
+
+
+def _start_thread_loop() -> None:
+    """Backward-compatible internal wrapper for older tests/imports."""
+    with _state._lock:
+        _start_thread_loop_locked()
 
 
 def stop_runtime() -> dict[str, Any]:
@@ -1140,18 +1195,25 @@ def stop_runtime() -> dict[str, Any]:
     with _state._lock:
         task = _state.task
         loop = _state.loop
-        _state.task = None
     if task is not None and loop is not None:
         try:
             loop.call_soon_threadsafe(task.cancel)
+            loop.call_soon_threadsafe(loop.stop)
         except Exception:
             pass
     return runtime_status()
 
 
 def runtime_status() -> dict[str, Any]:
+    task = _state.task
+    thread = _state.thread
+    task_alive = bool(task is not None and not task.done())
+    thread_alive = bool(thread is not None and thread.is_alive())
     return {
-        "running": bool(_state.task is not None and _state.running),
+        "running": bool(task_alive and _state.running),
+        "starting": bool((task_alive or thread_alive) and not _state.running),
+        "thread_alive": thread_alive,
+        "task_alive": task_alive,
         "started_at": _state.started_at_iso,
         "last_tick_iso": _state.last_tick_iso,
         "tick_count": _state.tick_count,
