@@ -1114,17 +1114,7 @@ def start_runtime() -> dict[str, Any]:
         ready = _state.ready_event
 
         try:
-            running_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            running_loop = None
-
-        try:
-            if running_loop is not None and running_loop.is_running():
-                _state.loop = running_loop
-                _state.task = running_loop.create_task(_tick_loop())
-                running_loop.call_soon(lambda: ready.set() if ready is not None else None)
-            else:
-                _start_thread_loop_locked()
+            _start_thread_loop_locked()
         except Exception as exc:
             _state.last_error = f"start failed: {type(exc).__name__}: {exc}"
             logger.exception("failed to start runtime: %s", exc)
