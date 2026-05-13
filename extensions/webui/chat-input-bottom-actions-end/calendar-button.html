@@ -2402,6 +2402,7 @@
         this.ctxid = nextCtxid;
         const selectedName = selectedContextDisplayName();
         if (selectedName && selectedName !== this.ctxid) this.agentName = selectedName;
+        this.startRuntimeStatusPolling();
         window.requestAnimationFrame(() => this.syncPanelPlacement());
         await this.refresh();
         if (this.accountSelectedTarget()) this.refreshAccountSyncStatus();
@@ -2411,6 +2412,7 @@
 
       closeCalendar() {
         this.visible = false;
+        this.stopRuntimeStatusPolling();
         this.removeCalendarResizeListener();
         if (this.placementCleanupTimer) window.clearTimeout(this.placementCleanupTimer);
         this.placementCleanupTimer = window.setTimeout(() => this.clearPanelPlacement(), 220);
