@@ -1457,6 +1457,10 @@
     return /^https?:\/\//i.test(url) ? url : "";
   }
 
+  async function postCalendar(body) {
+    return await callJsonApi("plugins/a0_scheduler/agent_calendar", body || {});
+  }
+
   function caldavWebUrl(account) {
     return String(account?.webui_calendar_url ?? account?.webuiCalendarUrl ?? "");
   }
