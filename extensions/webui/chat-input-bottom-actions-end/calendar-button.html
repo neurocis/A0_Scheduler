@@ -5,7 +5,7 @@
     align-items: stretch;
     --a0-calendar-panel-margin: clamp(0.5rem, 1.5vw, 1.25rem);
     --a0-calendar-panel-width: calc(100vw - 1rem);
-    --a0-calendar-panel-max-height: min(1488px, 96vh);
+    --a0-calendar-panel-max-height: min(760px, 82vh);
     --a0-calendar-tab-offset-left: 0px;
   }
 
@@ -48,7 +48,7 @@
     width: var(--a0-calendar-panel-width, calc(100vw - 1rem));
     max-width: calc(100vw - 1rem);
     height: var(--a0-calendar-panel-height, auto);
-    max-height: var(--a0-calendar-panel-max-height, min(1488px, 96vh));
+    max-height: var(--a0-calendar-panel-max-height, min(760px, 82vh));
     display: flex;
     flex-direction: column;
     container-type: inline-size;
@@ -1976,20 +1976,17 @@
             ? Math.max(0, Math.round(panelBottom - referenceUnliftedBottom))
             : 0;
           const desiredComposerGap = Math.max(2, Math.round(margin * 0.35));
-          // Keep the stack panel compact now that item editing opens in a modal,
-          // while still capping it to the available space above the bottom action row.
-          const panelViewportLimit = Math.max(160, Math.round(Math.min(
+          // Mirror the Inheritance panel sizing/lift behavior: a single,
+          // natural desired height that grows the composer just enough to
+          // expose the panel, without the prior 1.6x bottom-slide expansion.
+          const panelViewportLimit = Math.max(220, Math.round(Math.min(
             viewportHeight - (margin * 2),
             panelBottom - margin,
           )));
-          const baseHeight = Math.round(Math.min(330, panelViewportLimit, Math.max(210, viewportHeight * 0.27)));
-          const currentDesiredHeight = Math.min(
-            panelViewportLimit,
-            Math.max(baseHeight, originalComposerGap + desiredComposerGap),
-          );
+          const baseHeight = Math.round(Math.min(560, panelViewportLimit, Math.max(360, viewportHeight * 0.55)));
           const desiredHeight = Math.min(
             panelViewportLimit,
-            Math.max(260, Math.round(currentDesiredHeight * 1.6)),
+            Math.max(baseHeight, originalComposerGap + desiredComposerGap),
           );
 
           // The panel is anchored to the bottom action row and opens upward.
